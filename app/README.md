@@ -8,9 +8,9 @@ A comprehensive rental property management application with separate dashboards 
 
 ### 🔐 Authentication & User Management
 - **Role-based access control** - Separate experiences for landlords and tenants
-- **Secure login/signup** with email and password (Supabase)
+- **Secure login/signup** with email and password
 - **Multi-step onboarding** flow for both user types
-- **Session persistence** with Supabase auth
+- **Session persistence** using localStorage
 
 ### 👨‍💼 Landlord Dashboard
 - **Dashboard Overview** - Occupancy rates, revenue analytics, property status
@@ -33,12 +33,10 @@ A comprehensive rental property management application with separate dashboards 
 - **Build Tool:** Vite
 - **Styling:** Tailwind CSS
 - **UI Components:** shadcn/ui
-- **Backend:** Supabase (Auth + Database)
 - **Charts:** Recharts
 - **Icons:** Lucide React
 - **Date Handling:** date-fns
 - **Routing:** React Router DOM
-- **Deployment:** Vercel
 
 ## 🚀 Getting Started
 
@@ -50,7 +48,7 @@ A comprehensive rental property management application with separate dashboards 
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/Hilltop256/rentease.git
+   git clone https://github.com/YOUR_USERNAME/rentease.git
    cd rentease
    ```
 
@@ -59,21 +57,20 @@ A comprehensive rental property management application with separate dashboards 
    npm install
    ```
 
-3. **Set up environment variables**
-   
-   Create a `.env` file:
-   ```env
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-4. **Start the development server**
+3. **Start the development server**
    ```bash
    npm run dev
    ```
 
-5. **Open in browser**
+4. **Open in browser**
    Navigate to `http://localhost:5173`
+
+### Demo Credentials
+
+| Role | Email | Password |
+|------|-------|----------|
+| Landlord | `landlord@demo.com` | `demo` |
+| Tenant | `tenant@demo.com` | `demo` |
 
 ## 📁 Project Structure
 
@@ -82,9 +79,7 @@ rentease/
 ├── src/
 │   ├── components/ui/        # shadcn/ui components
 │   ├── contexts/
-│   │   └── AuthContext.tsx   # Authentication state management (Supabase)
-│   ├── lib/
-│   │   └── supabase.ts       # Supabase client
+│   │   └── AuthContext.tsx   # Authentication state management
 │   ├── data/
 │   │   └── mockData.ts       # Mock data for demo
 │   ├── pages/
@@ -112,20 +107,47 @@ rentease/
 ├── package.json
 ├── tailwind.config.js
 ├── tsconfig.json
-├── vite.config.ts
-└── vercel.json
+└── vite.config.ts
 ```
 
 ## 🔧 Configuration
 
 ### Environment Variables
 
-Required in `.env`:
+Create a `.env` file in the root directory:
 
 ```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+# API Configuration (for future backend integration)
+VITE_API_URL=http://localhost:3000/api
+
+# App Configuration
+VITE_APP_NAME=RentEase
+VITE_APP_VERSION=1.0.0
 ```
+
+## 🎯 Roadmap
+
+### Phase 1 - Core Features (Current)
+- [x] Authentication system
+- [x] Landlord dashboard
+- [x] Tenant dashboard
+- [x] Property management
+- [x] Payment tracking
+- [x] Maintenance requests
+
+### Phase 2 - Backend Integration
+- [ ] RESTful API with Node.js/Express
+- [ ] Database (PostgreSQL/MongoDB)
+- [ ] Real-time notifications
+- [ ] File uploads for documents
+- [ ] Email notifications
+
+### Phase 3 - Advanced Features
+- [ ] Online payment processing (Stripe)
+- [ ] Mobile app (React Native)
+- [ ] Document e-signing
+- [ ] AI-powered rent recommendations
+- [ ] Multi-language support
 
 ## 🤝 Contributing
 
@@ -137,14 +159,13 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 ## 📝 License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
 - [shadcn/ui](https://ui.shadcn.com/) for beautiful UI components
 - [Tailwind CSS](https://tailwindcss.com/) for utility-first styling
 - [Lucide Icons](https://lucide.dev/) for beautiful icons
-- [Supabase](https://supabase.com/) for backend services
 
 ---
 
