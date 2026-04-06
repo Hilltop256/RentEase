@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 import type { User, UserRole, LoginCredentials, SignupData, OnboardingData } from '@/types/auth';
 
 interface AuthContextType {
@@ -14,116 +15,139 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users database
-const MOCK_USERS: User[] = [
-  {
-    id: '1',
-    email: 'landlord@demo.com',
-    firstName: 'John',
-    lastName: 'Smith',
-    role: 'landlord',
-    phone: '(555) 123-4567',
-    createdAt: '2024-01-01',
-    updatedAt: '2024-01-01',
-    isOnboarded: true
-  },
-  {
-    id: '2',
-    email: 'tenant@demo.com',
-    firstName: 'Sarah',
-    lastName: 'Johnson',
-    role: 'tenant',
-    phone: '(555) 987-6543',
-    createdAt: '2024-01-15',
-    updatedAt: '2024-01-15',
-    isOnboarded: true
-  }
-];
+function mapSupabaseUserToUser(supabaseUser: any): User {
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email,
+    firstName: supabaseUser.user_metadata?.first_name || '',
+    lastName: supabaseUser.user_metadata?.last_name || '',
+    role: supabaseUser.user_metadata?.role || 'tenant',
+    phone: supabaseUser.user_metadata?.phone || '',
+    createdAt: supabaseUser.created_at,
+    updatedAt: supabaseUser.updated_at || supabaseUser.created_at,
+    isOnboarded: supabaseUser.user_metadata?.is_onboarded || false
+  };
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check for existing session on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('rentease_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(mapSupabaseUserToUser(session.user));
+      }
+      setIsLoading(false);
+    };
+
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        setUser(mapSupabaseUserToUser(session.user));
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const foundUser = MOCK_USERS.find(u => u.email === credentials.email);
-    if (!foundUser) {
-      throw new Error('Invalid email or password');
+    const { error } = await supabase.auth.signInWithPassword({
+      email: credentials.email,
+      password: credentials.password
+    });
+
+    if (error) {
+      setIsLoading(false);
+      throw new Error(error.message);
     }
-    
-    setUser(foundUser);
-    localStorage.setItem('rentease_user', JSON.stringify(foundUser));
     setIsLoading(false);
   }, []);
 
   const signup = useCallback(async (data: SignupData) => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const newUser: User = {
-      id: Math.random().toString(36).substr(2, 9),
+    const { error } = await supabase.auth.signUp({
       email: data.email,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      role: data.role,
-      phone: data.phone,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isOnboarded: false
-    };
-    
-    MOCK_USERS.push(newUser);
-    setUser(newUser);
-    localStorage.setItem('rentease_user', JSON.stringify(newUser));
+      password: data.password,
+      options: {
+        data: {
+          first_name: data.firstName,
+          last_name: data.lastName,
+          role: data.role,
+          phone: data.phone,
+          is_onboarded: false
+        }
+      }
+    });
+
+    if (error) {
+      setIsLoading(false);
+      throw new Error(error.message);
+    }
     setIsLoading(false);
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('rentease_user');
   }, []);
 
   const completeOnboarding = useCallback(async (_data: OnboardingData) => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
     
     if (user) {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          is_onboarded: true
+        }
+      });
+
+      if (error) {
+        setIsLoading(false);
+        throw new Error(error.message);
+      }
+
       const updatedUser = { 
         ...user, 
         isOnboarded: true,
         updatedAt: new Date().toISOString()
       };
       setUser(updatedUser);
-      localStorage.setItem('rentease_user', JSON.stringify(updatedUser));
     }
     setIsLoading(false);
   }, [user]);
 
   const updateProfile = useCallback(async (data: Partial<User>) => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
     
     if (user) {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          first_name: data.firstName,
+          last_name: data.lastName,
+          phone: data.phone
+        }
+      });
+
+      if (error) {
+        setIsLoading(false);
+        throw new Error(error.message);
+      }
+
       const updatedUser = { 
         ...user, 
         ...data,
         updatedAt: new Date().toISOString()
       };
       setUser(updatedUser);
-      localStorage.setItem('rentease_user', JSON.stringify(updatedUser));
     }
     setIsLoading(false);
   }, [user]);
