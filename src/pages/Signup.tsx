@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, User, Phone, Building2, Home, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Phone, Building2, Home, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,7 @@ const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [signupSuccess, setSignupSuccess] = useState(false);
   const [formData, setFormData] = useState({
     role: '' as UserRole | '',
     email: '',
@@ -68,13 +69,36 @@ const Signup = () => {
         role: formData.role as UserRole,
         phone: formData.phone
       });
-      navigate('/onboarding');
+      setSignupSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Signup failed');
     } finally {
       setIsLoading(false);
     }
   };
+
+  const renderSuccessMessage = () => (
+    <div className="text-center py-8">
+      <div className="flex justify-center mb-6">
+        <div className="h-20 w-20 rounded-full bg-emerald-100 flex items-center justify-center">
+          <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+        </div>
+      </div>
+      <h2 className="text-2xl font-bold mb-2">Check Your Email!</h2>
+      <p className="text-gray-500 mb-4">
+        We've sent a confirmation link to <strong>{formData.email}</strong>
+      </p>
+      <p className="text-sm text-gray-400">
+        Click the link in the email to activate your account, then come back to sign in.
+      </p>
+      <Link 
+        to="/login" 
+        className="inline-block mt-6 text-emerald-600 hover:text-emerald-700 font-medium"
+      >
+        Go to Login →
+      </Link>
+    </div>
+  );
 
   const renderRoleStep = () => (
     <div className="space-y-4">
@@ -327,15 +351,21 @@ const Signup = () => {
             </div>
           </CardHeader>
           <CardContent>
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+            {signupSuccess ? (
+              renderSuccessMessage()
+            ) : (
+              <>
+                {error && (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
 
-            {currentStep === 'role' && renderRoleStep()}
-            {currentStep === 'account' && renderAccountStep()}
-            {currentStep === 'profile' && renderProfileStep()}
+                {currentStep === 'role' && renderRoleStep()}
+                {currentStep === 'account' && renderAccountStep()}
+                {currentStep === 'profile' && renderProfileStep()}
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
