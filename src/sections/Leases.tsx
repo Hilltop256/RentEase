@@ -7,7 +7,9 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  Loader2
+  Loader2,
+  Trash2,
+  Edit
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +20,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { db } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, differenceInDays } from 'date-fns';
@@ -25,10 +29,26 @@ import { format, differenceInDays } from 'date-fns';
 const Leases = () => {
   const { user } = useAuth();
   const [leases, setLeases] = useState<any[]>([]);
+  const [tenants, setTenants] = useState<any[]>([]);
+  const [properties, setProperties] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('all');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingLease, setEditingLease] = useState<any>(null);
+
+  const [formData, setFormData] = useState({
+    tenantId: '',
+    propertyId: '',
+    startDate: '',
+    endDate: '',
+    monthlyRent: '',
+    securityDeposit: '',
+    petDeposit: '',
+    terms: '',
+    status: 'pending'
+  });
 
   useEffect(() => {
     loadLeases();
@@ -38,8 +58,14 @@ const Leases = () => {
     if (!user?.id) return;
     try {
       setIsLoading(true);
-      const data = await db.leases.getAll(user.id);
-      setLeases(data);
+      const [leasesData, tenantsData, propertiesData] = await Promise.all([
+        db.leases.getAll(user.id),
+        db.tenants.getAll(user.id),
+        db.properties.getAll(user.id)
+      ]);
+      setLeases(leasesData);
+      setTenants(tenantsData);
+      setProperties(propertiesData);
     } catch (error) {
       console.error('Failed to load leases:', error);
     } finally {
@@ -94,6 +120,64 @@ const Leases = () => {
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.id) return;
+
+    try {
+      const leaseData = {
+        tenantId: formData.tenantId,
+        propertyId: formData.propertyId,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        monthlyRent: Number(formData.monthlyRent),
+        securityDeposit: formData.securityDeposit ? Number(formData.securityDeposit) : 0,
+        petDeposit: formData.petDeposit ? Number(formData.petDeposit) : undefined,
+        terms: formData.terms || undefined,
+        status: formData.status as 'active' | 'pending' | 'expired' | 'terminated'
+      };
+
+      if (editingLease) {
+        await db.leases.update(editingLease.id, leaseData);
+      } else {
+        await db.leases.create(leaseData, user.id);
+      }
+
+      setFormData({
+        tenantId: '',
+        propertyId: '',
+        startDate: '',
+        endDate: '',
+        monthlyRent: '',
+        securityDeposit: '',
+        petDeposit: '',
+        terms: '',
+        status: 'pending'
+      });
+      setEditingLease(null);
+      setIsDialogOpen(false);
+      loadLeases();
+    } catch (error) {
+      console.error('Failed to save lease:', error);
+    }
+  };
+
+  const handleEdit = (lease: any) => {
+    setEditingLease(lease);
+    setFormData({
+      tenantId: lease.tenantId || '',
+      propertyId: lease.propertyId || '',
+      startDate: lease.startDate || '',
+      endDate: lease.endDate || '',
+      monthlyRent: String(lease.monthlyRent),
+      securityDeposit: String(lease.securityDeposit),
+      petDeposit: lease.petDeposit ? String(lease.petDeposit) : '',
+      terms: lease.terms || '',
+      status: lease.status
+    });
+    setIsDialogOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -110,10 +194,144 @@ const Leases = () => {
           <h2 className="text-2xl font-bold">Leases</h2>
           <p className="text-gray-500">Manage lease agreements</p>
         </div>
-        <Button className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Create Lease
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setEditingLease(null);
+            setFormData({
+              tenantId: '',
+              propertyId: '',
+              startDate: '',
+              endDate: '',
+              monthlyRent: '',
+              securityDeposit: '',
+              petDeposit: '',
+              terms: '',
+              status: 'pending'
+            });
+          }
+        }}>
+          <DialogTrigger asChild>
+            <Button className="bg-emerald-600 hover:bg-emerald-700">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Lease
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingLease ? 'Edit Lease' : 'Create New Lease'}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Tenant *</Label>
+                <Select value={formData.tenantId} onValueChange={(v) => setFormData({ ...formData, tenantId: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select tenant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenants.map(t => (
+                      <SelectItem key={t.id} value={t.id}>{t.firstName} {t.lastName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Property *</Label>
+                <Select value={formData.propertyId} onValueChange={(v) => setFormData({ ...formData, propertyId: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select property" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {properties.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="startDate">Start Date *</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endDate">End Date *</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="monthlyRent">Monthly Rent ($) *</Label>
+                  <Input
+                    id="monthlyRent"
+                    type="number"
+                    placeholder="1500"
+                    value={formData.monthlyRent}
+                    onChange={(e) => setFormData({ ...formData, monthlyRent: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="securityDeposit">Security Deposit</Label>
+                  <Input
+                    id="securityDeposit"
+                    type="number"
+                    placeholder="1500"
+                    value={formData.securityDeposit}
+                    onChange={(e) => setFormData({ ...formData, securityDeposit: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="petDeposit">Pet Deposit</Label>
+                <Input
+                  id="petDeposit"
+                  type="number"
+                  placeholder="300"
+                  value={formData.petDeposit}
+                  onChange={(e) => setFormData({ ...formData, petDeposit: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="expired">Expired</SelectItem>
+                    <SelectItem value="terminated">Terminated</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="terms">Terms</Label>
+                <Textarea
+                  id="terms"
+                  placeholder="Additional lease terms..."
+                  value={formData.terms}
+                  onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
+                />
+              </div>
+              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700">
+                {editingLease ? 'Update' : 'Create'} Lease
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Stats Cards */}
@@ -247,6 +465,10 @@ const Leases = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEdit(lease)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
                           <DropdownMenuItem>View Details</DropdownMenuItem>
                           <DropdownMenuItem>Renew Lease</DropdownMenuItem>
                           <DropdownMenuItem>Download PDF</DropdownMenuItem>
@@ -254,6 +476,7 @@ const Leases = () => {
                             className="text-red-600"
                             onClick={() => handleDeleteLease(lease.id)}
                           >
+                            <Trash2 className="h-4 w-4 mr-2" />
                             Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>

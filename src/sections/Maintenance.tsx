@@ -12,7 +12,9 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
-  Loader2
+  Loader2,
+  Trash2,
+  Edit
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +24,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { db } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
@@ -29,11 +33,25 @@ import { format } from 'date-fns';
 const Maintenance = () => {
   const { user } = useAuth();
   const [requests, setRequests] = useState<any[]>([]);
+  const [properties, setProperties] = useState<any[]>([]);
+  const [tenants, setTenants] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('all');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingRequest, setEditingRequest] = useState<any>(null);
+
+  const [formData, setFormData] = useState({
+    propertyId: '',
+    tenantId: '',
+    title: '',
+    description: '',
+    category: 'other',
+    priority: 'medium',
+    status: 'open'
+  });
 
   useEffect(() => {
     loadRequests();
@@ -43,8 +61,14 @@ const Maintenance = () => {
     if (!user?.id) return;
     try {
       setIsLoading(true);
-      const data = await db.maintenance.getAll(user.id);
-      setRequests(data);
+      const [requestsData, propertiesData, tenantsData] = await Promise.all([
+        db.maintenance.getAll(user.id),
+        db.properties.getAll(user.id),
+        db.tenants.getAll(user.id)
+      ]);
+      setRequests(requestsData);
+      setProperties(propertiesData);
+      setTenants(tenantsData);
     } catch (error) {
       console.error('Failed to load maintenance requests:', error);
     } finally {
@@ -109,6 +133,67 @@ const Maintenance = () => {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    try {
+      await db.maintenance.delete(id);
+      setRequests(requests.filter(r => r.id !== id));
+    } catch (error) {
+      console.error('Failed to delete request:', error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.id) return;
+
+    try {
+      const requestData = {
+        propertyId: formData.propertyId || undefined,
+        tenantId: formData.tenantId || undefined,
+        title: formData.title,
+        description: formData.description || undefined,
+        category: formData.category as any,
+        priority: formData.priority as any,
+        status: formData.status as any
+      };
+
+      if (editingRequest) {
+        await db.maintenance.update(editingRequest.id, requestData);
+      } else {
+        await db.maintenance.create(requestData, user.id);
+      }
+
+      setFormData({
+        propertyId: '',
+        tenantId: '',
+        title: '',
+        description: '',
+        category: 'other',
+        priority: 'medium',
+        status: 'open'
+      });
+      setEditingRequest(null);
+      setIsDialogOpen(false);
+      loadRequests();
+    } catch (error) {
+      console.error('Failed to save request:', error);
+    }
+  };
+
+  const handleEdit = (request: any) => {
+    setEditingRequest(request);
+    setFormData({
+      propertyId: request.propertyId || '',
+      tenantId: request.tenantId || '',
+      title: request.title,
+      description: request.description || '',
+      category: request.category || 'other',
+      priority: request.priority || 'medium',
+      status: request.status || 'open'
+    });
+    setIsDialogOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -125,10 +210,128 @@ const Maintenance = () => {
           <h2 className="text-2xl font-bold">Maintenance</h2>
           <p className="text-gray-500">Track and manage maintenance requests</p>
         </div>
-        <Button className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="h-4 w-4 mr-2" />
-          New Request
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setEditingRequest(null);
+            setFormData({
+              propertyId: '',
+              tenantId: '',
+              title: '',
+              description: '',
+              category: 'other',
+              priority: 'medium',
+              status: 'open'
+            });
+          }
+        }}>
+          <DialogTrigger asChild>
+            <Button className="bg-emerald-600 hover:bg-emerald-700">
+              <Plus className="h-4 w-4 mr-2" />
+              New Request
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingRequest ? 'Edit Request' : 'New Maintenance Request'}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Property</Label>
+                <Select value={formData.propertyId} onValueChange={(v) => setFormData({ ...formData, propertyId: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select property" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {properties.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Tenant</Label>
+                <Select value={formData.tenantId} onValueChange={(v) => setFormData({ ...formData, tenantId: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select tenant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenants.map(t => (
+                      <SelectItem key={t.id} value={t.id}>{t.firstName} {t.lastName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="title">Title *</Label>
+                <Input
+                  id="title"
+                  placeholder="e.g., Leaky faucet"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Describe the issue..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="plumbing">Plumbing</SelectItem>
+                      <SelectItem value="electrical">Electrical</SelectItem>
+                      <SelectItem value="hvac">HVAC</SelectItem>
+                      <SelectItem value="appliance">Appliance</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Priority</Label>
+                  <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="urgent">Urgent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700">
+                {editingRequest ? 'Update' : 'Create'} Request
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Stats Cards */}
@@ -256,6 +459,10 @@ const Maintenance = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(request)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleStatusChange(request.id, 'open')}>
                           Mark Open
                         </DropdownMenuItem>
@@ -265,7 +472,8 @@ const Maintenance = () => {
                         <DropdownMenuItem onClick={() => handleStatusChange(request.id, 'completed')}>
                           Mark Completed
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600">
+                        <DropdownMenuItem onClick={() => handleDelete(request.id)} className="text-red-600">
+                          <Trash2 className="h-4 w-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>

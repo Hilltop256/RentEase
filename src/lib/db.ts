@@ -140,7 +140,7 @@ export const db = {
       return data?.map(mapDbLeaseToLease) || [];
     },
 
-    async create(lease: Omit<Lease, 'id' | 'created_at' | 'updated_at'>, landlordId: string): Promise<Lease> {
+    async create(lease: Partial<Lease>, landlordId: string): Promise<Lease> {
       const { data, error } = await supabase
         .from('leases')
         .insert({ ...lease, landlord_id: landlordId })
@@ -197,7 +197,7 @@ export const db = {
       return data?.map(mapDbPaymentToPayment) || [];
     },
 
-    async create(payment: Omit<Payment, 'id' | 'created_at' | 'updated_at'>, landlordId: string): Promise<Payment> {
+    async create(payment: Partial<Payment>, landlordId: string): Promise<Payment> {
       const { data, error } = await supabase
         .from('payments')
         .insert({ ...payment, landlord_id: landlordId })

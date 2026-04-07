@@ -7,7 +7,9 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  Loader2
+  Loader2,
+  Trash2,
+  Edit
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +20,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
 import { db } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
@@ -26,10 +29,25 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 const Payments = () => {
   const { user } = useAuth();
   const [payments, setPayments] = useState<any[]>([]);
+  const [tenants, setTenants] = useState<any[]>([]);
+  const [properties, setProperties] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('all');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<any>(null);
+
+  const [formData, setFormData] = useState({
+    tenantId: '',
+    propertyId: '',
+    amount: '',
+    dueDate: '',
+    paidDate: '',
+    status: 'pending',
+    paymentMethod: 'bank_transfer',
+    description: ''
+  });
 
   useEffect(() => {
     loadPayments();
@@ -39,8 +57,14 @@ const Payments = () => {
     if (!user?.id) return;
     try {
       setIsLoading(true);
-      const data = await db.payments.getAll(user.id);
-      setPayments(data);
+      const [paymentsData, tenantsData, propertiesData] = await Promise.all([
+        db.payments.getAll(user.id),
+        db.tenants.getAll(user.id),
+        db.properties.getAll(user.id)
+      ]);
+      setPayments(paymentsData);
+      setTenants(tenantsData);
+      setProperties(propertiesData);
     } catch (error) {
       console.error('Failed to load payments:', error);
     } finally {
@@ -96,6 +120,73 @@ const Payments = () => {
     return Object.entries(months).map(([name, amount]) => ({ name, amount }));
   }, [payments]);
 
+  const handleDelete = async (id: string) => {
+    try {
+      await db.payments.delete(id);
+      setPayments(payments.filter(p => p.id !== id));
+    } catch (error) {
+      console.error('Failed to delete payment:', error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.id) return;
+
+    try {
+      const selectedTenant = tenants.find(t => t.id === formData.tenantId);
+      const selectedProperty = properties.find(p => p.id === formData.propertyId);
+
+      const paymentData = {
+        tenantId: formData.tenantId,
+        propertyId: formData.propertyId,
+        amount: Number(formData.amount),
+        dueDate: formData.dueDate,
+        paidDate: formData.paidDate || undefined,
+        status: formData.status as 'paid' | 'pending' | 'overdue' | 'partial',
+        paymentMethod: formData.paymentMethod as 'bank_transfer' | 'credit_card' | 'check' | 'cash',
+        description: formData.description || undefined
+      };
+
+      if (editingPayment) {
+        await db.payments.update(editingPayment.id, paymentData);
+      } else {
+        await db.payments.create(paymentData, user.id);
+      }
+
+      setFormData({
+        tenantId: '',
+        propertyId: '',
+        amount: '',
+        dueDate: '',
+        paidDate: '',
+        status: 'pending',
+        paymentMethod: 'bank_transfer',
+        description: ''
+      });
+      setEditingPayment(null);
+      setIsDialogOpen(false);
+      loadPayments();
+    } catch (error) {
+      console.error('Failed to save payment:', error);
+    }
+  };
+
+  const handleEdit = (payment: any) => {
+    setEditingPayment(payment);
+    setFormData({
+      tenantId: payment.tenantId || '',
+      propertyId: payment.propertyId || '',
+      amount: String(payment.amount),
+      dueDate: payment.dueDate,
+      paidDate: payment.paidDate || '',
+      status: payment.status,
+      paymentMethod: payment.paymentMethod || 'bank_transfer',
+      description: payment.description || ''
+    });
+    setIsDialogOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -112,10 +203,134 @@ const Payments = () => {
           <h2 className="text-2xl font-bold">Payments</h2>
           <p className="text-gray-500">Track and manage rent payments</p>
         </div>
-        <Button className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Payment
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setEditingPayment(null);
+            setFormData({
+              tenantId: '',
+              propertyId: '',
+              amount: '',
+              dueDate: '',
+              paidDate: '',
+              status: 'pending',
+              paymentMethod: 'bank_transfer',
+              description: ''
+            });
+          }
+        }}>
+          <DialogTrigger asChild>
+            <Button className="bg-emerald-600 hover:bg-emerald-700">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Payment
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingPayment ? 'Edit Payment' : 'Add New Payment'}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Tenant *</Label>
+                <Select value={formData.tenantId} onValueChange={(v) => setFormData({ ...formData, tenantId: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select tenant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenants.map(t => (
+                      <SelectItem key={t.id} value={t.id}>{t.firstName} {t.lastName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Property *</Label>
+                <Select value={formData.propertyId} onValueChange={(v) => setFormData({ ...formData, propertyId: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select property" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {properties.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="amount">Amount ($) *</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  placeholder="1500"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dueDate">Due Date *</Label>
+                <Input
+                  id="dueDate"
+                  type="date"
+                  value={formData.dueDate}
+                  onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="paidDate">Paid Date</Label>
+                <Input
+                  id="paidDate"
+                  type="date"
+                  value={formData.paidDate}
+                  onChange={(e) => setFormData({ ...formData, paidDate: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="overdue">Overdue</SelectItem>
+                      <SelectItem value="partial">Partial</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Method</Label>
+                  <Select value={formData.paymentMethod} onValueChange={(v) => setFormData({ ...formData, paymentMethod: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="credit_card">Credit Card</SelectItem>
+                      <SelectItem value="check">Check</SelectItem>
+                      <SelectItem value="cash">Cash</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Input
+                  id="description"
+                  placeholder="Payment description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                />
+              </div>
+              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700">
+                {editingPayment ? 'Update' : 'Add'} Payment
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Stats Cards */}
@@ -264,9 +479,16 @@ const Payments = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(payment)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
                         <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
                         <DropdownMenuItem>Send Reminder</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelete(payment.id)} className="text-red-600">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
