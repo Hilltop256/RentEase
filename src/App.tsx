@@ -106,6 +106,17 @@ const OnboardingRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function AppRoutes() {
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  const getRedirect = () => {
+    if (isLoading) return null;
+    if (!isAuthenticated) return <Navigate to="/login" replace />;
+    if (!user?.isOnboarded) return <Navigate to="/onboarding" replace />;
+    if (user?.role === 'landlord') return <Navigate to="/landlord" replace />;
+    if (user?.role === 'tenant') return <Navigate to="/tenant" replace />;
+    return <Navigate to="/login" replace />;
+  };
+
   return (
     <Routes>
       {/* Public Routes */}
@@ -165,8 +176,8 @@ function AppRoutes() {
       />
 
       {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={getRedirect()} />
+      <Route path="*" element={getRedirect()} />
     </Routes>
   );
 }
