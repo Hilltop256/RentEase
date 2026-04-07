@@ -52,14 +52,23 @@ const Signup = () => {
     e.preventDefault();
     setError('');
 
+    console.log('Signup formData:', formData);
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
     }
 
+    if (!formData.firstName || !formData.lastName) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
     setIsLoading(true);
+    console.log('Starting signup...');
 
     try {
+      console.log('Calling signup with:', { email: formData.email, role: formData.role, firstName: formData.firstName, lastName: formData.lastName });
       await signup({
         email: formData.email,
         password: formData.password,
@@ -68,10 +77,13 @@ const Signup = () => {
         role: formData.role as UserRole,
         phone: formData.phone
       });
+      console.log('Signup succeeded, navigating to onboarding');
       navigate('/onboarding');
     } catch (err) {
+      console.error('Signup error:', err);
       setError(err instanceof Error ? err.message : 'Signup failed');
     } finally {
+      console.log('Setting isLoading to false');
       setIsLoading(false);
     }
   };

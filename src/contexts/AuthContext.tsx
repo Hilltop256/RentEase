@@ -101,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signup = useCallback(async (data: SignupData) => {
     setIsLoading(true);
+    console.log('AuthContext signup called with:', data);
     
     const { data: signUpData, error } = await supabase.auth.signUp({
       email: data.email,
@@ -116,13 +117,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
+    console.log('Supabase signup response:', { signUpData, error });
+
     if (error) {
+      console.error('Signup error:', error);
       setIsLoading(false);
       throw new Error(error.message);
     }
     
-    if (signUpData.user && !signUpData.session) {
-      console.log('User created, email confirmation required');
+    if (signUpData.user) {
+      console.log('User created successfully:', signUpData.user.id);
+      if (!signUpData.session) {
+        console.log('No session - may need email confirmation');
+      }
     }
     
     setIsLoading(false);
