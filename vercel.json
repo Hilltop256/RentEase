@@ -1,5 +1,7 @@
 {
   "build": {
+    "command": "rm -rf node_modules && npm install && npm run build",
+    "outputDirectory": "dist",
     "env": {
       "VITE_SUPABASE_URL": "https://knioiuxmfxaeawcsrtlr.supabase.co",
       "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtuaW9pdXhtZnhhZWF3Y3NydGxyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MTA0NDgsImV4cCI6MjA5MTA4NjQ0OH0.l1AmqskLt9qNFgj8Al9qaYk2UyVlU-q2Ntv2-fTmxVA"
