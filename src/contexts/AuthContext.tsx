@@ -61,15 +61,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     setIsLoading(true);
+    console.log('Attempting login with:', credentials.email);
     
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: credentials.email,
       password: credentials.password
     });
 
+    console.log('Login response:', { data, error });
+
     if (error) {
       setIsLoading(false);
       throw new Error(error.message);
+    }
+    
+    if (data?.user) {
+      console.log('Login successful, user:', data.user.id);
     }
     setIsLoading(false);
   }, []);
