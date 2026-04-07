@@ -95,9 +95,9 @@ const Notifications = () => {
         title: formData.title,
         message: formData.message,
         scheduledFor: formData.scheduledFor || undefined,
-        status: formData.scheduledFor ? 'pending' : 'sent',
+        status: (formData.scheduledFor ? 'pending' : 'sent') as 'pending' | 'sent' | 'failed' | 'cancelled',
         isRecurring: formData.isRecurring,
-        recurringFrequency: formData.isRecurring ? formData.recurringFrequency : undefined
+        recurringFrequency: formData.isRecurring ? formData.recurringFrequency as 'daily' | 'weekly' | 'monthly' : undefined
       };
 
       if (editingNotification) {

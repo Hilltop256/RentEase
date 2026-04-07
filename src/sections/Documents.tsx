@@ -106,9 +106,9 @@ const Documents = () => {
         type: formData.type as 'lease' | 'addendum' | 'invoice' | 'receipt' | 'id_document' | 'insurance' | 'tax' | 'other',
         category: formData.category as 'tenant' | 'property' | 'financial' | 'legal' | 'other',
         fileUrl: formData.fileUrl,
-        fileSize: formData.fileSize ? Number(formData.fileSize) : null,
-        mimeType: formData.mimeType || null,
-        description: formData.description || null,
+        fileSize: formData.fileSize ? Number(formData.fileSize) : undefined,
+        mimeType: formData.mimeType || undefined,
+        description: formData.description || undefined,
         isEncrypted: false
       };
 

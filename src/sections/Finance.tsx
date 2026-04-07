@@ -156,7 +156,7 @@ const Finance = () => {
         amount: Number(formData.amount),
         date: formData.date,
         isRecurring: formData.isRecurring,
-        recurringFrequency: formData.isRecurring ? formData.recurringFrequency : undefined
+        recurringFrequency: formData.isRecurring ? formData.recurringFrequency as 'weekly' | 'monthly' | 'quarterly' | 'yearly' : undefined
       };
 
       if (editingExpense) {
