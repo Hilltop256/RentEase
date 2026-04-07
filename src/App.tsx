@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
+import ResetPassword from '@/pages/ResetPassword';
 import Onboarding from '@/pages/Onboarding';
 import LandlordDashboard from '@/pages/landlord/LandlordDashboard';
 import TenantDashboard from '@/pages/tenant/TenantDashboard';
@@ -121,6 +122,14 @@ function AppRoutes() {
         element={
           <PublicRoute>
             <Signup />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/forgot-password" 
+        element={
+          <PublicRoute>
+            <ResetPassword />
           </PublicRoute>
         } 
       />

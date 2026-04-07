@@ -1,21 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Plus, 
   Search, 
-  Filter, 
   MoreHorizontal, 
   FileText, 
   Clock,
   CheckCircle2,
-  XCircle,
   AlertCircle,
-  Download,
-  Eye,
-  User,
-  Home,
-  DollarSign
+  Loader2
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -23,16 +17,35 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { leases } from '@/data/mockData';
-import type { Lease } from '@/types';
-import { format, parseISO, differenceInDays } from 'date-fns';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { db } from '@/lib/db';
+import { useAuth } from '@/contexts/AuthContext';
+import { format, differenceInDays } from 'date-fns';
 
 const Leases = () => {
+  const { user } = useAuth();
+  const [leases, setLeases] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('all');
-  const [selectedLease, setSelectedLease] = useState<Lease | null>(null);
+
+  useEffect(() => {
+    loadLeases();
+  }, [user?.id]);
+
+  const loadLeases = async () => {
+    if (!user?.id) return;
+    try {
+      setIsLoading(true);
+      const data = await db.leases.getAll(user.id);
+      setLeases(data);
+    } catch (error) {
+      console.error('Failed to load leases:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredLeases = leases.filter(lease => {
     const matchesSearch = lease.tenantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -42,227 +55,137 @@ const Leases = () => {
     return matchesSearch && matchesStatus && matchesTab;
   });
 
-  const stats = {
-    active: leases.filter(l => l.status === 'active').length,
-    expired: leases.filter(l => l.status === 'expired').length,
-    pending: leases.filter(l => l.status === 'pending').length,
-    terminating: leases.filter(l => l.status === 'terminated').length,
-    expiringSoon: leases.filter(l => {
+  const stats = useMemo(() => {
+    const active = leases.filter(l => l.status === 'active').length;
+    const expiring = leases.filter(l => {
       if (l.status !== 'active') return false;
-      const daysUntilExpiry = differenceInDays(parseISO(l.endDate), new Date());
-      return daysUntilExpiry > 0 && daysUntilExpiry <= 30;
-    }).length
-  };
+      const daysLeft = differenceInDays(new Date(l.endDate), new Date());
+      return daysLeft <= 30 && daysLeft > 0;
+    }).length;
+    const expired = leases.filter(l => l.status === 'expired').length;
+    const totalRent = leases.filter(l => l.status === 'active').reduce((sum, l) => sum + Number(l.monthlyRent), 0);
+
+    return { active, expiring, expired, totalRent };
+  }, [leases]);
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       active: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-      expired: 'bg-gray-100 text-gray-700 border-gray-200',
       pending: 'bg-amber-100 text-amber-700 border-amber-200',
-      terminated: 'bg-red-100 text-red-700 border-red-200'
+      expired: 'bg-red-100 text-red-700 border-red-200',
+      terminated: 'bg-gray-100 text-gray-700 border-gray-200'
     };
     return styles[status] || 'bg-gray-100 text-gray-700';
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
-      case 'expired':
-        return <Clock className="h-4 w-4 text-gray-500" />;
-      case 'pending':
-        return <AlertCircle className="h-4 w-4 text-amber-600" />;
-      case 'terminated':
-        return <XCircle className="h-4 w-4 text-red-600" />;
-      default:
-        return null;
+  const getDaysRemaining = (endDate: string) => {
+    const days = differenceInDays(new Date(endDate), new Date());
+    if (days < 0) return { text: 'Expired', color: 'text-red-600' };
+    if (days <= 30) return { text: `${days} days left`, color: 'text-amber-600' };
+    return { text: `${days} days left`, color: 'text-gray-600' };
+  };
+
+  const handleDeleteLease = async (id: string) => {
+    try {
+      await db.leases.delete(id);
+      setLeases(leases.filter(l => l.id !== id));
+    } catch (error) {
+      console.error('Failed to delete lease:', error);
     }
   };
 
-  const getLeaseProgress = (startDate: string, endDate: string) => {
-    const start = parseISO(startDate).getTime();
-    const end = parseISO(endDate).getTime();
-    const now = new Date().getTime();
-    const total = end - start;
-    const elapsed = now - start;
-    const progress = Math.min(Math.max((elapsed / total) * 100, 0), 100);
-    return Math.round(progress);
-  };
-
-  const getDaysUntilExpiry = (endDate: string) => {
-    const days = differenceInDays(parseISO(endDate), new Date());
-    if (days < 0) return 'Expired';
-    if (days === 0) return 'Expires today';
-    if (days === 1) return '1 day left';
-    if (days <= 30) return `${days} days left`;
-    return `${Math.floor(days / 30)} months left`;
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Leases</h1>
-          <p className="text-gray-500">Manage rental agreements and lease terms.</p>
+          <h2 className="text-2xl font-bold">Leases</h2>
+          <p className="text-gray-500">Manage lease agreements</p>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="bg-emerald-600 hover:bg-emerald-700">
-              <Plus className="h-4 w-4 mr-2" />
-              New Lease
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New Lease</DialogTitle>
-            </DialogHeader>
-            <div className="grid grid-cols-2 gap-4 py-4">
-              <div className="col-span-2 space-y-2">
-                <label className="text-sm font-medium">Tenant</label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select tenant" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Sarah Johnson</SelectItem>
-                    <SelectItem value="2">David Chen</SelectItem>
-                    <SelectItem value="3">Emily Rodriguez</SelectItem>
-                    <SelectItem value="4">James Wilson</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="col-span-2 space-y-2">
-                <label className="text-sm font-medium">Property</label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select property" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Sunset Gardens Apartments</SelectItem>
-                    <SelectItem value="2">Downtown Loft</SelectItem>
-                    <SelectItem value="3">Family Home on Maple</SelectItem>
-                    <SelectItem value="4">Beachside Condo</SelectItem>
-                    <SelectItem value="5">Modern Townhouse</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Start Date</label>
-                <Input type="date" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">End Date</label>
-                <Input type="date" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Monthly Rent</label>
-                <Input type="number" placeholder="0.00" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Security Deposit</label>
-                <Input type="number" placeholder="0.00" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Pet Deposit (Optional)</label>
-                <Input type="number" placeholder="0.00" />
-              </div>
-              <div className="col-span-2 space-y-2">
-                <label className="text-sm font-medium">Lease Terms</label>
-                <Input placeholder="e.g., No smoking, No pets" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline">Cancel</Button>
-              <Button className="bg-emerald-600 hover:bg-emerald-700">Create Lease</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button className="bg-emerald-600 hover:bg-emerald-700">
+          <Plus className="h-4 w-4 mr-2" />
+          Create Lease
+        </Button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Card className="border-gray-200">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-emerald-100 p-2 rounded-lg">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              </div>
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-500">Active</p>
-                <p className="text-xl font-bold">{stats.active}</p>
+                <p className="text-sm text-gray-500">Active Leases</p>
+                <p className="text-2xl font-bold text-emerald-600">{stats.active}</p>
               </div>
+              <CheckCircle2 className="h-8 w-8 text-emerald-600" />
             </div>
           </CardContent>
         </Card>
-        <Card className="border-gray-200">
+        <Card>
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-amber-100 p-2 rounded-lg">
-                <Clock className="h-4 w-4 text-amber-600" />
-              </div>
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-500">Pending</p>
-                <p className="text-xl font-bold">{stats.pending}</p>
+                <p className="text-sm text-gray-500">Expiring Soon</p>
+                <p className="text-2xl font-bold text-amber-600">{stats.expiring}</p>
               </div>
+              <AlertCircle className="h-8 w-8 text-amber-600" />
             </div>
           </CardContent>
         </Card>
-        <Card className="border-gray-200">
+        <Card>
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-red-100 p-2 rounded-lg">
-                <AlertCircle className="h-4 w-4 text-red-600" />
-              </div>
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-500">Expiring Soon</p>
-                <p className="text-xl font-bold">{stats.expiringSoon}</p>
+                <p className="text-sm text-gray-500">Expired</p>
+                <p className="text-2xl font-bold text-red-600">{stats.expired}</p>
               </div>
+              <Clock className="h-8 w-8 text-red-600" />
             </div>
           </CardContent>
         </Card>
-        <Card className="border-gray-200">
+        <Card>
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-gray-100 p-2 rounded-lg">
-                <Clock className="h-4 w-4 text-gray-600" />
-              </div>
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-500">Expired</p>
-                <p className="text-xl font-bold">{stats.expired}</p>
+                <p className="text-sm text-gray-500">Monthly Revenue</p>
+                <p className="text-2xl font-bold text-emerald-600">${stats.totalRent.toLocaleString()}</p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-gray-200">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-violet-100 p-2 rounded-lg">
-                <FileText className="h-4 w-4 text-violet-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Total Leases</p>
-                <p className="text-xl font-bold">{leases.length}</p>
-              </div>
+              <FileText className="h-8 w-8 text-emerald-600" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4">
-        <div className="relative flex-1 min-w-64">
+      {/* Tabs and Filters */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="active">Active</TabsTrigger>
+          <TabsTrigger value="pending">Pending</TabsTrigger>
+          <TabsTrigger value="expired">Expired</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input 
-            placeholder="Search leases..." 
+          <Input
+            placeholder="Search leases..."
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-40">
-            <Filter className="h-4 w-4 mr-2" />
+          <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -275,222 +198,74 @@ const Leases = () => {
         </Select>
       </div>
 
-      {/* Leases List */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
-          <TabsTrigger value="all" className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent">
-            All Leases
-          </TabsTrigger>
-          <TabsTrigger value="active" className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent">
-            Active
-          </TabsTrigger>
-          <TabsTrigger value="pending" className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent">
-            Pending
-          </TabsTrigger>
-          <TabsTrigger value="expired" className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent">
-            Expired
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value={activeTab} className="m-0 mt-6">
-          <Card className="border-gray-200">
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tenant</TableHead>
-                    <TableHead>Property</TableHead>
-                    <TableHead>Lease Period</TableHead>
-                    <TableHead>Progress</TableHead>
-                    <TableHead>Rent</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-10"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLeases.map((lease) => {
-                    const progress = getLeaseProgress(lease.startDate, lease.endDate);
-                    const daysLeft = getDaysUntilExpiry(lease.endDate);
-                    const isExpiringSoon = lease.status === 'active' && differenceInDays(parseISO(lease.endDate), new Date()) <= 30;
-                    
-                    return (
-                      <TableRow key={lease.id} className="cursor-pointer" onClick={() => setSelectedLease(lease)}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-gray-400" />
-                            <span className="font-medium">{lease.tenantName}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Home className="h-4 w-4 text-gray-400" />
-                            <span className="text-sm">{lease.propertyName}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <p>{format(parseISO(lease.startDate), 'MMM d, yyyy')}</p>
-                            <p className="text-gray-500">to {format(parseISO(lease.endDate), 'MMM d, yyyy')}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="w-full">
-                            <div className="flex justify-between text-xs mb-1">
-                              <span>{progress}%</span>
-                              <span className={isExpiringSoon ? 'text-red-600' : 'text-gray-500'}>{daysLeft}</span>
-                            </div>
-                            <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                              <div 
-                                className={`h-full rounded-full ${isExpiringSoon ? 'bg-red-500' : 'bg-emerald-500'}`}
-                                style={{ width: `${progress}%` }}
-                              />
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <DollarSign className="h-4 w-4 text-emerald-600" />
-                            <span className="font-semibold">{lease.monthlyRent.toLocaleString()}/mo</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusBadge(lease.status)}>
-                            {getStatusIcon(lease.status)}
-                            <span className="ml-1 capitalize">{lease.status}</span>
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setSelectedLease(lease)}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Download className="h-4 w-4 mr-2" />
-                                Download PDF
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <FileText className="h-4 w-4 mr-2" />
-                                Renew Lease
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Lease Detail Dialog */}
-      <Dialog open={!!selectedLease} onOpenChange={() => setSelectedLease(null)}>
-        <DialogContent className="max-w-2xl">
-          {selectedLease && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Lease Agreement Details</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-6">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-8 w-8 text-emerald-600" />
-                    <div>
-                      <p className="font-semibold">Lease #{selectedLease.id}</p>
-                      <p className="text-sm text-gray-500">Created on {format(parseISO(selectedLease.startDate), 'MMMM d, yyyy')}</p>
-                    </div>
-                  </div>
-                  <Badge className={getStatusBadge(selectedLease.status)}>
-                    {getStatusIcon(selectedLease.status)}
-                    <span className="ml-1 capitalize">{selectedLease.status}</span>
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="text-sm text-gray-500 mb-2">Tenant</h4>
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-gray-400" />
-                      <span className="font-medium">{selectedLease.tenantName}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-sm text-gray-500 mb-2">Property</h4>
-                    <div className="flex items-center gap-2">
-                      <Home className="h-4 w-4 text-gray-400" />
-                      <span className="font-medium">{selectedLease.propertyName}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm text-gray-500 mb-2">Lease Period</h4>
-                  <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500">Start Date</p>
-                      <p className="font-medium">{format(parseISO(selectedLease.startDate), 'MMMM d, yyyy')}</p>
-                    </div>
-                    <div className="text-gray-400">→</div>
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500">End Date</p>
-                      <p className="font-medium">{format(parseISO(selectedLease.endDate), 'MMMM d, yyyy')}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm text-gray-500 mb-2">Financial Terms</h4>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="p-4 bg-emerald-50 rounded-lg">
-                      <p className="text-xs text-gray-500">Monthly Rent</p>
-                      <p className="text-lg font-bold text-emerald-600">${selectedLease.monthlyRent.toLocaleString()}</p>
-                    </div>
-                    <div className="p-4 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500">Security Deposit</p>
-                      <p className="text-lg font-bold">${selectedLease.securityDeposit.toLocaleString()}</p>
-                    </div>
-                    {selectedLease.petDeposit && (
-                      <div className="p-4 bg-gray-50 rounded-lg">
-                        <p className="text-xs text-gray-500">Pet Deposit</p>
-                        <p className="text-lg font-bold">${selectedLease.petDeposit.toLocaleString()}</p>
+      {/* Leases Table */}
+      {filteredLeases.length === 0 ? (
+        <div className="text-center py-12">
+          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-500">No leases found</h3>
+          <p className="text-gray-400">Create your first lease to get started</p>
+        </div>
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Tenant</TableHead>
+                <TableHead>Property</TableHead>
+                <TableHead>Start Date</TableHead>
+                <TableHead>End Date</TableHead>
+                <TableHead>Rent</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredLeases.map((lease) => {
+                const daysRemaining = getDaysRemaining(lease.endDate);
+                return (
+                  <TableRow key={lease.id}>
+                    <TableCell className="font-medium">{lease.tenantName}</TableCell>
+                    <TableCell>{lease.propertyName}</TableCell>
+                    <TableCell>{format(new Date(lease.startDate), 'MMM d, yyyy')}</TableCell>
+                    <TableCell>
+                      <div>{format(new Date(lease.endDate), 'MMM d, yyyy')}</div>
+                      <div className={`text-xs ${daysRemaining.color}`}>
+                        {daysRemaining.text}
                       </div>
-                    )}
-                  </div>
-                </div>
-
-                {selectedLease.terms && (
-                  <div>
-                    <h4 className="text-sm text-gray-500 mb-2">Terms & Conditions</h4>
-                    <p className="p-4 bg-gray-50 rounded-lg text-sm">{selectedLease.terms}</p>
-                  </div>
-                )}
-
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download PDF
-                  </Button>
-                  {selectedLease.status === 'active' && (
-                    <Button className="bg-emerald-600 hover:bg-emerald-700">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Renew Lease
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+                    </TableCell>
+                    <TableCell>${Number(lease.monthlyRent).toLocaleString()}/mo</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusBadge(lease.status)}>
+                        {lease.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>View Details</DropdownMenuItem>
+                          <DropdownMenuItem>Renew Lease</DropdownMenuItem>
+                          <DropdownMenuItem>Download PDF</DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-red-600"
+                            onClick={() => handleDeleteLease(lease.id)}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
     </div>
   );
 };

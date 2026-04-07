@@ -11,6 +11,8 @@ interface AuthContextType {
   logout: () => void;
   completeOnboarding: (data: OnboardingData) => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -101,6 +103,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const resetPassword = useCallback(async (email: string) => {
+    setIsLoading(true);
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`
+    });
+
+    if (error) {
+      setIsLoading(false);
+      throw new Error(error.message);
+    }
+    setIsLoading(false);
+  }, []);
+
+  const updatePassword = useCallback(async (password: string) => {
+    setIsLoading(true);
+    
+    const { error } = await supabase.auth.updateUser({
+      password
+    });
+
+    if (error) {
+      setIsLoading(false);
+      throw new Error(error.message);
+    }
+    setIsLoading(false);
+  }, []);
+
   const completeOnboarding = useCallback(async (_data: OnboardingData) => {
     setIsLoading(true);
     
@@ -162,7 +192,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signup,
       logout,
       completeOnboarding,
-      updateProfile
+      updateProfile,
+      resetPassword,
+      updatePassword
     }}>
       {children}
     </AuthContext.Provider>
