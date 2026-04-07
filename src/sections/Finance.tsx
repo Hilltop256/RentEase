@@ -151,12 +151,12 @@ const Finance = () => {
 
     try {
       const expenseData = {
-        category: formData.category,
+        category: formData.category as 'maintenance' | 'repairs' | 'utilities' | 'taxes' | 'insurance' | 'mortgage' | 'management_fee' | 'legal' | 'marketing' | 'other',
         description: formData.description,
         amount: Number(formData.amount),
         date: formData.date,
         isRecurring: formData.isRecurring,
-        recurringFrequency: formData.isRecurring ? formData.recurringFrequency : null
+        recurringFrequency: formData.isRecurring ? formData.recurringFrequency : undefined
       };
 
       if (editingExpense) {
