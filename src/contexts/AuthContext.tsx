@@ -94,6 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     if (data?.user) {
       console.log('Login successful, user:', data.user.id);
+      setUser(mapSupabaseUserToUser(data.user));
     }
     setIsLoading(false);
   }, []);
