@@ -59,6 +59,11 @@ const Signup = () => {
       return;
     }
 
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
     if (!formData.firstName || !formData.lastName) {
       setError('Please fill in all required fields');
       return;
