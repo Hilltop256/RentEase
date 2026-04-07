@@ -177,4 +177,14 @@ export interface Notification {
   recurringFrequency?: 'daily' | 'weekly' | 'monthly';
 }
 
+export interface Message {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  content: string;
+  isRead: boolean;
+  readAt?: string;
+  createdAt: string;
+}
+
 export type ViewType = 'dashboard' | 'properties' | 'tenants' | 'payments' | 'maintenance' | 'leases';

@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Property, Tenant, Payment, MaintenanceRequest, Lease, DashboardStats, Expense, Vendor, Vacancy, Lead, Document, Notification } from '@/types';
+import type { Property, Tenant, Payment, MaintenanceRequest, Lease, DashboardStats, Expense, Vendor, Vacancy, Lead, Document, Notification, Message } from '@/types';
 
 export const db = {
   // PROPERTIES
@@ -573,6 +573,55 @@ export const db = {
     }
   },
 
+  // MESSAGES (for tenant-landlord communication)
+  messages: {
+    async getConversation(userId1: string, userId2: string): Promise<Message[]> {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`and(sender_id.eq.${userId1},receiver_id.eq.${userId2}),and(sender_id.eq.${userId2},receiver_id.eq.${userId1})`)
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      return data?.map(mapDbMessageToMessage) || [];
+    },
+
+    async getAll(userId: string): Promise<Message[]> {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data?.map(mapDbMessageToMessage) || [];
+    },
+
+    async send(message: Omit<Message, 'id' | 'created_at' | 'isRead' | 'readAt'>): Promise<Message> {
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: message.senderId,
+          receiver_id: message.receiverId,
+          content: message.content
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapDbMessageToMessage(data);
+    },
+
+    async markAsRead(messageId: string): Promise<void> {
+      const { error } = await supabase
+        .from('messages')
+        .update({ is_read: true, read_at: new Date().toISOString() })
+        .eq('id', messageId);
+      
+      if (error) throw error;
+    }
+  },
+
   // DASHBOARD STATS
   async getDashboardStats(landlordId: string): Promise<DashboardStats> {
     const [properties, tenants, payments, maintenance, expenses] = await Promise.all([
@@ -800,5 +849,17 @@ function mapDbNotificationToNotification(dbNotification: any): Notification {
     status: dbNotification.status,
     isRecurring: dbNotification.is_recurring,
     recurringFrequency: dbNotification.recurring_frequency
+  };
+}
+
+function mapDbMessageToMessage(dbMessage: any): Message {
+  return {
+    id: dbMessage.id,
+    senderId: dbMessage.sender_id,
+    receiverId: dbMessage.receiver_id,
+    content: dbMessage.content,
+    isRead: dbMessage.is_read,
+    readAt: dbMessage.read_at,
+    createdAt: dbMessage.created_at
   };
 }
