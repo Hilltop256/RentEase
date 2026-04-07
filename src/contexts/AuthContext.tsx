@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = useCallback(async (data: SignupData) => {
     setIsLoading(true);
     
-    const { error } = await supabase.auth.signUp({
+    const { data: signUpData, error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
       options: {
@@ -120,6 +120,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
       throw new Error(error.message);
     }
+    
+    if (signUpData.user && !signUpData.session) {
+      console.log('User created, email confirmation required');
+    }
+    
     setIsLoading(false);
   }, []);
 
