@@ -78,7 +78,8 @@ const Signup = () => {
         phone: formData.phone
       });
       console.log('Signup succeeded, navigating to onboarding');
-      navigate('/onboarding');
+      // Delay to ensure user state is set
+      setTimeout(() => navigate('/onboarding'), 100);
     } catch (err) {
       console.error('Signup error:', err);
       setError(err instanceof Error ? err.message : 'Signup failed');

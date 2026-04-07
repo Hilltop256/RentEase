@@ -127,9 +127,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     if (signUpData.user) {
       console.log('User created successfully:', signUpData.user.id);
-      if (!signUpData.session) {
-        console.log('No session - may need email confirmation');
-      }
+      // Set user immediately since email confirmation is disabled
+      setUser(mapSupabaseUserToUser(signUpData.user));
     }
     
     setIsLoading(false);
