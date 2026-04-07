@@ -8,7 +8,9 @@ import {
   Home,
   Calendar,
   UserCircle,
-  Loader2
+  Loader2,
+  Trash2,
+  Edit
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +20,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { db } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tenant } from '@/types';
@@ -26,10 +30,27 @@ import { format } from 'date-fns';
 const Tenants = () => {
   const { user } = useAuth();
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [properties, setProperties] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    propertyId: '',
+    unitNumber: '',
+    leaseStart: '',
+    leaseEnd: '',
+    monthlyRent: '',
+    securityDeposit: '',
+    status: 'pending'
+  });
 
   useEffect(() => {
     loadTenants();
@@ -39,8 +60,12 @@ const Tenants = () => {
     if (!user?.id) return;
     try {
       setIsLoading(true);
-      const data = await db.tenants.getAll(user.id);
-      setTenants(data);
+      const [tenantsData, propertiesData] = await Promise.all([
+        db.tenants.getAll(user.id),
+        db.properties.getAll(user.id)
+      ]);
+      setTenants(tenantsData);
+      setProperties(propertiesData);
     } catch (error) {
       console.error('Failed to load tenants:', error);
     } finally {
@@ -75,6 +100,70 @@ const Tenants = () => {
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.id) return;
+
+    try {
+      const tenantData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone || undefined,
+        propertyId: formData.propertyId || undefined,
+        unitNumber: formData.unitNumber || undefined,
+        leaseStart: formData.leaseStart || undefined,
+        leaseEnd: formData.leaseEnd || undefined,
+        monthlyRent: formData.monthlyRent ? Number(formData.monthlyRent) : 0,
+        securityDeposit: formData.securityDeposit ? Number(formData.securityDeposit) : 0,
+        status: formData.status as 'active' | 'inactive' | 'pending'
+      };
+
+      if (editingTenant) {
+        await db.tenants.update(editingTenant.id, tenantData);
+      } else {
+        await db.tenants.create(tenantData, user.id);
+      }
+
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        propertyId: '',
+        unitNumber: '',
+        leaseStart: '',
+        leaseEnd: '',
+        monthlyRent: '',
+        securityDeposit: '',
+        status: 'pending'
+      });
+      setEditingTenant(null);
+      setIsDialogOpen(false);
+      loadTenants();
+    } catch (error) {
+      console.error('Failed to save tenant:', error);
+    }
+  };
+
+  const handleEditTenant = (tenant: Tenant) => {
+    setEditingTenant(tenant);
+    setFormData({
+      firstName: tenant.firstName,
+      lastName: tenant.lastName,
+      email: tenant.email,
+      phone: tenant.phone || '',
+      propertyId: tenant.propertyId || '',
+      unitNumber: tenant.unitNumber || '',
+      leaseStart: tenant.leaseStart || '',
+      leaseEnd: tenant.leaseEnd || '',
+      monthlyRent: String(tenant.monthlyRent),
+      securityDeposit: String(tenant.securityDeposit),
+      status: tenant.status
+    });
+    setIsDialogOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -91,10 +180,164 @@ const Tenants = () => {
           <h2 className="text-2xl font-bold">Tenants</h2>
           <p className="text-gray-500">Manage your tenants</p>
         </div>
-        <Button className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Tenant
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setEditingTenant(null);
+            setFormData({
+              firstName: '',
+              lastName: '',
+              email: '',
+              phone: '',
+              propertyId: '',
+              unitNumber: '',
+              leaseStart: '',
+              leaseEnd: '',
+              monthlyRent: '',
+              securityDeposit: '',
+              status: 'pending'
+            });
+          }
+        }}>
+          <DialogTrigger asChild>
+            <Button className="bg-emerald-600 hover:bg-emerald-700">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Tenant
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingTenant ? 'Edit Tenant' : 'Add New Tenant'}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name *</Label>
+                  <Input
+                    id="firstName"
+                    placeholder="John"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Input
+                    id="lastName"
+                    placeholder="Doe"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="john@example.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="(555) 000-0000"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label>Property</Label>
+                  <Select value={formData.propertyId} onValueChange={(v) => setFormData({ ...formData, propertyId: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select property" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {properties.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="unitNumber">Unit #</Label>
+                  <Input
+                    id="unitNumber"
+                    placeholder="101"
+                    value={formData.unitNumber}
+                    onChange={(e) => setFormData({ ...formData, unitNumber: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="leaseStart">Lease Start</Label>
+                  <Input
+                    id="leaseStart"
+                    type="date"
+                    value={formData.leaseStart}
+                    onChange={(e) => setFormData({ ...formData, leaseStart: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="leaseEnd">Lease End</Label>
+                  <Input
+                    id="leaseEnd"
+                    type="date"
+                    value={formData.leaseEnd}
+                    onChange={(e) => setFormData({ ...formData, leaseEnd: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="monthlyRent">Monthly Rent ($)</Label>
+                  <Input
+                    id="monthlyRent"
+                    type="number"
+                    placeholder="1500"
+                    value={formData.monthlyRent}
+                    onChange={(e) => setFormData({ ...formData, monthlyRent: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="securityDeposit">Security Deposit</Label>
+                  <Input
+                    id="securityDeposit"
+                    type="number"
+                    placeholder="1500"
+                    value={formData.securityDeposit}
+                    onChange={(e) => setFormData({ ...formData, securityDeposit: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700">
+                {editingTenant ? 'Update' : 'Add'} Tenant
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Search and Filters */}
@@ -170,12 +413,16 @@ const Tenants = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>Edit</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEditTenant(tenant)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
                       <DropdownMenuItem>View Lease</DropdownMenuItem>
                       <DropdownMenuItem 
                         className="text-red-600"
                         onClick={() => handleDeleteTenant(tenant.id)}
                       >
+                        <Trash2 className="h-4 w-4 mr-2" />
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -256,12 +503,16 @@ const Tenants = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditTenant(tenant)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
                         <DropdownMenuItem>View</DropdownMenuItem>
                         <DropdownMenuItem 
                           className="text-red-600"
                           onClick={() => handleDeleteTenant(tenant.id)}
                         >
+                          <Trash2 className="h-4 w-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>

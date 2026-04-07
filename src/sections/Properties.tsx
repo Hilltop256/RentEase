@@ -12,7 +12,9 @@ import {
   Building,
   Hotel,
   Warehouse,
-  Loader2
+  Loader2,
+  Trash2,
+  Edit
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +23,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { db } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Property } from '@/types';
@@ -33,6 +37,24 @@ const Properties = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+
+  const [formData, setFormData] = useState({
+    name: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    type: 'apartment',
+    bedrooms: '1',
+    bathrooms: '1',
+    squareFeet: '',
+    monthlyRent: '',
+    status: 'vacant',
+    imageUrl: '',
+    description: ''
+  });
 
   useEffect(() => {
     loadProperties();
@@ -88,6 +110,76 @@ const Properties = () => {
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.id) return;
+
+    try {
+      const propertyData = {
+        name: formData.name,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zipCode,
+        type: formData.type as 'apartment' | 'house' | 'condo' | 'townhouse',
+        bedrooms: Number(formData.bedrooms),
+        bathrooms: Number(formData.bathrooms),
+        squareFeet: formData.squareFeet ? Number(formData.squareFeet) : 0,
+        monthlyRent: formData.monthlyRent ? Number(formData.monthlyRent) : 0,
+        status: formData.status as 'vacant' | 'occupied' | 'maintenance',
+        imageUrl: formData.imageUrl || undefined,
+        description: formData.description || undefined
+      };
+
+      if (editingProperty) {
+        await db.properties.update(editingProperty.id, propertyData);
+      } else {
+        await db.properties.create(propertyData, user.id);
+      }
+
+      setFormData({
+        name: '',
+        address: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        type: 'apartment',
+        bedrooms: '1',
+        bathrooms: '1',
+        squareFeet: '',
+        monthlyRent: '',
+        status: 'vacant',
+        imageUrl: '',
+        description: ''
+      });
+      setEditingProperty(null);
+      setIsDialogOpen(false);
+      loadProperties();
+    } catch (error) {
+      console.error('Failed to save property:', error);
+    }
+  };
+
+  const handleEditProperty = (property: Property) => {
+    setEditingProperty(property);
+    setFormData({
+      name: property.name,
+      address: property.address,
+      city: property.city,
+      state: property.state,
+      zipCode: property.zipCode,
+      type: property.type,
+      bedrooms: String(property.bedrooms),
+      bathrooms: String(property.bathrooms),
+      squareFeet: String(property.squareFeet),
+      monthlyRent: String(property.monthlyRent),
+      status: property.status,
+      imageUrl: property.imageUrl || '',
+      description: property.description || ''
+    });
+    setIsDialogOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -104,10 +196,197 @@ const Properties = () => {
           <h2 className="text-2xl font-bold">Properties</h2>
           <p className="text-gray-500">Manage your rental properties</p>
         </div>
-        <Button className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Property
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setEditingProperty(null);
+            setFormData({
+              name: '',
+              address: '',
+              city: '',
+              state: '',
+              zipCode: '',
+              type: 'apartment',
+              bedrooms: '1',
+              bathrooms: '1',
+              squareFeet: '',
+              monthlyRent: '',
+              status: 'vacant',
+              imageUrl: '',
+              description: ''
+            });
+          }
+        }}>
+          <DialogTrigger asChild>
+            <Button className="bg-emerald-600 hover:bg-emerald-700">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Property
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingProperty ? 'Edit Property' : 'Add New Property'}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Property Name *</Label>
+                <Input
+                  id="name"
+                  placeholder="e.g., Sunset Apartments Unit 101"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address">Address *</Label>
+                <Input
+                  id="address"
+                  placeholder="123 Main Street"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="city">City *</Label>
+                  <Input
+                    id="city"
+                    placeholder="New York"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">State *</Label>
+                  <Input
+                    id="state"
+                    placeholder="NY"
+                    value={formData.state}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="zipCode">ZIP *</Label>
+                  <Input
+                    id="zipCode"
+                    placeholder="10001"
+                    value={formData.zipCode}
+                    onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select value={formData.type} onValueChange={(v) => setFormData({ ...formData, type: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="apartment">Apartment</SelectItem>
+                      <SelectItem value="house">House</SelectItem>
+                      <SelectItem value="condo">Condo</SelectItem>
+                      <SelectItem value="townhouse">Townhouse</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="vacant">Vacant</SelectItem>
+                      <SelectItem value="occupied">Occupied</SelectItem>
+                      <SelectItem value="maintenance">Maintenance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="bedrooms">Bedrooms</Label>
+                  <Select value={formData.bedrooms} onValueChange={(v) => setFormData({ ...formData, bedrooms: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">0</SelectItem>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="2">2</SelectItem>
+                      <SelectItem value="3">3</SelectItem>
+                      <SelectItem value="4">4</SelectItem>
+                      <SelectItem value="5">5+</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bathrooms">Bathrooms</Label>
+                  <Select value={formData.bathrooms} onValueChange={(v) => setFormData({ ...formData, bathrooms: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="1.5">1.5</SelectItem>
+                      <SelectItem value="2">2</SelectItem>
+                      <SelectItem value="2.5">2.5</SelectItem>
+                      <SelectItem value="3">3+</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="squareFeet">Sq Ft</Label>
+                  <Input
+                    id="squareFeet"
+                    type="number"
+                    placeholder="800"
+                    value={formData.squareFeet}
+                    onChange={(e) => setFormData({ ...formData, squareFeet: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="monthlyRent">Monthly Rent ($) *</Label>
+                <Input
+                  id="monthlyRent"
+                  type="number"
+                  placeholder="1500"
+                  value={formData.monthlyRent}
+                  onChange={(e) => setFormData({ ...formData, monthlyRent: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="imageUrl">Image URL</Label>
+                <Input
+                  id="imageUrl"
+                  placeholder="https://example.com/image.jpg"
+                  value={formData.imageUrl}
+                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Property description..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                />
+              </div>
+              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700">
+                {editingProperty ? 'Update' : 'Add'} Property
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Search and Filters */}
@@ -183,11 +462,15 @@ const Properties = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>Edit</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEditProperty(property)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
                       <DropdownMenuItem 
                         className="text-red-600"
                         onClick={() => handleDeleteProperty(property.id)}
                       >
+                        <Trash2 className="h-4 w-4 mr-2" />
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>

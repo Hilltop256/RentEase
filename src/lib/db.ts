@@ -26,7 +26,7 @@ export const db = {
       return data ? mapDbPropertyToProperty(data) : null;
     },
 
-    async create(property: Omit<Property, 'id' | 'created_at' | 'updated_at'>, landlordId: string): Promise<Property> {
+    async create(property: Partial<Property>, landlordId: string): Promise<Property> {
       const { data, error } = await supabase
         .from('properties')
         .insert({ ...property, landlord_id: landlordId })
@@ -83,7 +83,7 @@ export const db = {
       return data ? mapDbTenantToTenant(data) : null;
     },
 
-    async create(tenant: Omit<Tenant, 'id' | 'created_at' | 'updated_at'>, landlordId: string): Promise<Tenant> {
+    async create(tenant: Partial<Tenant>, landlordId: string): Promise<Tenant> {
       const { data, error } = await supabase
         .from('tenants')
         .insert({ ...tenant, landlord_id: landlordId })
