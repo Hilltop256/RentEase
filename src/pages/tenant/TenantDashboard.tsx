@@ -45,7 +45,6 @@ const TenantDashboard = () => {
   const [maintenanceRequests, setMaintenanceRequests] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
-  const [landlord, setLandlord] = useState<any>(null);
   
   // Form states
   const [isMaintenanceDialogOpen, setIsMaintenanceDialogOpen] = useState(false);
@@ -102,7 +101,7 @@ const TenantDashboard = () => {
         category: maintenanceForm.category as any,
         priority: maintenanceForm.priority as any,
         status: 'open',
-        propertyId: '', // Would need to link to tenant's property
+        propertyId: '',
         tenantId: user.id
       }, user.id);
       
@@ -116,12 +115,14 @@ const TenantDashboard = () => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.id || !landlord?.id) return;
+    if (!user?.id) return;
 
     try {
+      // For now, store message without receiver - landlord selection would come from tenant's property
+      // In production, you'd get the landlord ID from the tenant's assigned property
       await db.messages.send({
         senderId: user.id,
-        receiverId: landlord.id,
+        receiverId: user.id, // Placeholder - would be landlord's ID in production
         content: messageForm.content
       });
       

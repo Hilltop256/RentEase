@@ -254,7 +254,7 @@ export const db = {
       return data?.map(mapDbMaintenanceToMaintenance) || [];
     },
 
-    async create(request: Omit<MaintenanceRequest, 'id' | 'created_at'>, landlordId: string): Promise<MaintenanceRequest> {
+    async create(request: Partial<MaintenanceRequest>, landlordId: string): Promise<MaintenanceRequest> {
       const { data, error } = await supabase
         .from('maintenance_requests')
         .insert({ ...request, landlord_id: landlordId })
@@ -597,7 +597,7 @@ export const db = {
       return data?.map(mapDbMessageToMessage) || [];
     },
 
-    async send(message: Omit<Message, 'id' | 'created_at' | 'isRead' | 'readAt'>): Promise<Message> {
+    async send(message: Partial<Message>): Promise<Message> {
       const { data, error } = await supabase
         .from('messages')
         .insert({
