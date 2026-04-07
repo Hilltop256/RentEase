@@ -37,17 +37,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(mapSupabaseUserToUser(session.user));
+      try {
+        console.log('Initializing auth...');
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('Session:', session);
+        if (session?.user) {
+          setUser(mapSupabaseUserToUser(session.user));
+        }
+      } catch (error) {
+        console.error('Auth init error:', error);
+      } finally {
+        console.log('Setting isLoading to false');
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('Auth state changed');
+      console.log('Auth state changed:', _event, session?.user?.email);
       if (session?.user) {
         setUser(mapSupabaseUserToUser(session.user));
       } else {
@@ -56,7 +64,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Timeout fallback - prevent infinite loading
+    const timeout = setTimeout(() => {
+      console.log('Auth timeout - setting loading to false');
+      setIsLoading(false);
+    }, 5000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
