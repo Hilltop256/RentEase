@@ -31,6 +31,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/db';
+import { formatCurrency } from '@/lib/currency';
 import { format, differenceInDays } from 'date-fns';
 
 type TenantView = 'overview' | 'payments' | 'maintenance' | 'documents' | 'messages' | 'profile';
@@ -170,7 +171,7 @@ const TenantDashboard = () => {
                     {nextPayment ? `Due ${format(new Date(nextPayment.dueDate), 'MMM d')}` : 'All Paid!'}
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {nextPayment ? `$${Number(nextPayment.amount).toLocaleString()}` : '$0'}
+                    {nextPayment ? formatCurrency(Number(nextPayment.amount)) : formatCurrency(0)}
                   </p>
                   {nextPayment && (
                     <p className="text-sm text-red-600">
@@ -192,7 +193,7 @@ const TenantDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500">Total Paid This Year</p>
-                  <p className="text-2xl font-bold text-gray-900">${totalPaid.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalPaid)}</p>
                   <p className="text-sm text-gray-500">{paidPayments.length} payments</p>
                 </div>
                 <div className="bg-blue-100 p-3 rounded-lg">
@@ -240,7 +241,7 @@ const TenantDashboard = () => {
                           <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                         </div>
                         <div>
-                          <p className="font-medium">${Number(payment.amount).toLocaleString()}</p>
+                          <p className="font-medium">{formatCurrency(Number(payment.amount))}</p>
                           <p className="text-xs text-gray-500">{payment.paymentMethod || 'Bank Transfer'}</p>
                         </div>
                       </div>
@@ -313,7 +314,7 @@ const TenantDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-emerald-100">Current Balance</p>
-                <p className="text-3xl font-bold">${Number(nextPayment.amount).toLocaleString()}</p>
+                <p className="text-3xl font-bold">{formatCurrency(Number(nextPayment.amount))}</p>
                 <p className="text-emerald-100 text-sm mt-1">Due {format(new Date(nextPayment.dueDate), 'MMMM d, yyyy')}</p>
               </div>
               <Button variant="secondary" className="bg-white text-emerald-600 hover:bg-gray-100" disabled>
@@ -351,7 +352,7 @@ const TenantDashboard = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold">${Number(payment.amount).toLocaleString()}</p>
+                    <p className="font-semibold">{formatCurrency(Number(payment.amount))}</p>
                     <p className="text-sm text-gray-500">
                       {format(new Date(payment.paidDate || payment.dueDate), 'MMM d, yyyy')}
                     </p>

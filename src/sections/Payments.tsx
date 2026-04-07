@@ -22,6 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { db } from '@/lib/db';
+import { formatCurrency } from '@/lib/currency';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -340,7 +341,7 @@ const Payments = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total Payments</p>
-                <p className="text-2xl font-bold">${stats.totalAmount.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{formatCurrency(stats.totalAmount)}</p>
               </div>
               <CreditCard className="h-8 w-8 text-gray-400" />
             </div>
@@ -351,7 +352,7 @@ const Payments = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Paid</p>
-                <p className="text-2xl font-bold text-emerald-600">${stats.paidAmount.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-emerald-600">{formatCurrency(stats.paidAmount)}</p>
               </div>
               <CheckCircle2 className="h-8 w-8 text-emerald-600" />
             </div>
@@ -362,7 +363,7 @@ const Payments = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Pending</p>
-                <p className="text-2xl font-bold text-amber-600">${stats.pendingAmount.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-amber-600">{formatCurrency(stats.pendingAmount)}</p>
               </div>
               <Clock className="h-8 w-8 text-amber-600" />
             </div>
@@ -393,7 +394,7 @@ const Payments = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip formatter={(value) => `$${Number(value).toLocaleString()}`} />
+                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 <Bar dataKey="amount" fill="#10b981" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -460,7 +461,7 @@ const Payments = () => {
                 <TableRow key={payment.id}>
                   <TableCell className="font-medium">{payment.tenantName}</TableCell>
                   <TableCell>{payment.propertyName}</TableCell>
-                  <TableCell>${Number(payment.amount).toLocaleString()}</TableCell>
+                  <TableCell>{formatCurrency(Number(payment.amount))}</TableCell>
                   <TableCell>{format(new Date(payment.dueDate), 'MMM d, yyyy')}</TableCell>
                   <TableCell>
                     <Badge className={getStatusBadge(payment.status)}>

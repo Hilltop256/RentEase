@@ -27,6 +27,7 @@ import {
 } from 'recharts';
 import { db } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency } from '@/lib/currency';
 import { format } from 'date-fns';
 
 const Dashboard = () => {
@@ -120,7 +121,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-sm text-gray-500">Monthly Revenue</p>
                 <p className="text-2xl font-bold text-emerald-600">
-                  ${(stats?.monthlyRevenue || 0).toLocaleString()}
+                  {formatCurrency(stats?.monthlyRevenue || 0)}
                 </p>
               </div>
               <DollarSign className="h-8 w-8 text-emerald-600" />
@@ -156,7 +157,7 @@ const Dashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip formatter={(value) => `$${Number(value).toLocaleString()}`} />
+                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>

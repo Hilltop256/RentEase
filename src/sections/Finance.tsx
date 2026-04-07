@@ -24,6 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { db } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
+import { formatCurrency } from '@/lib/currency';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 const EXPENSE_CATEGORIES = [
@@ -332,7 +333,7 @@ const Finance = () => {
               <div>
                 <p className="text-sm text-gray-500">Total Income</p>
                 <p className="text-2xl font-bold text-emerald-600">
-                  ${stats.totalIncome.toLocaleString()}
+                  {formatCurrency(stats.totalIncome)}
                 </p>
               </div>
               <TrendingUp className="h-8 w-8 text-emerald-600" />
@@ -345,7 +346,7 @@ const Finance = () => {
               <div>
                 <p className="text-sm text-gray-500">Total Expenses</p>
                 <p className="text-2xl font-bold text-red-600">
-                  ${stats.totalExpenses.toLocaleString()}
+                  {formatCurrency(stats.totalExpenses)}
                 </p>
               </div>
               <TrendingDown className="h-8 w-8 text-red-600" />
@@ -358,7 +359,7 @@ const Finance = () => {
               <div>
                 <p className="text-sm text-gray-500">Pending Payments</p>
                 <p className="text-2xl font-bold text-amber-600">
-                  ${stats.pendingIncome.toLocaleString()}
+                  {formatCurrency(stats.pendingIncome)}
                 </p>
               </div>
               <DollarSign className="h-8 w-8 text-amber-600" />
@@ -371,7 +372,7 @@ const Finance = () => {
               <div>
                 <p className="text-sm text-gray-500">Net Income</p>
                 <p className={`text-2xl font-bold ${stats.netIncome >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  ${stats.netIncome.toLocaleString()}
+                  {formatCurrency(stats.netIncome)}
                 </p>
               </div>
               {stats.netIncome >= 0 ? <TrendingUp className="h-8 w-8 text-emerald-600" /> : <TrendingDown className="h-8 w-8 text-red-600" />}
@@ -393,7 +394,7 @@ const Finance = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip formatter={(value) => `$${Number(value).toLocaleString()}`} />
+                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 <Bar dataKey="income" fill="#10b981" name="Income" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="expenses" fill="#ef4444" name="Expenses" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -418,13 +419,13 @@ const Finance = () => {
                     outerRadius={100}
                     paddingAngle={5}
                     dataKey="value"
-                    label={({ name, value }) => `${name}: $${value.toLocaleString()}`}
+                    label={({ name, value }) => `${name}: ${formatCurrency(Number(value))}`}
                   >
                     {expenseChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => `$${Number(value).toLocaleString()}`} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -491,7 +492,7 @@ const Finance = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>{expense.description}</TableCell>
-                  <TableCell className="font-medium">${Number(expense.amount).toLocaleString()}</TableCell>
+                  <TableCell className="font-medium">{formatCurrency(Number(expense.amount))}</TableCell>
                   <TableCell>
                     {expense.isRecurring ? (
                       <Badge className="bg-blue-100 text-blue-700">{expense.recurringFrequency}</Badge>

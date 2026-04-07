@@ -23,6 +23,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { db } from '@/lib/db';
+import { formatCurrency } from '@/lib/currency';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, differenceInDays } from 'date-fns';
 
@@ -374,7 +375,7 @@ const Leases = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Monthly Revenue</p>
-                <p className="text-2xl font-bold text-emerald-600">${stats.totalRent.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-emerald-600">{formatCurrency(stats.totalRent)}</p>
               </div>
               <FileText className="h-8 w-8 text-emerald-600" />
             </div>
@@ -451,7 +452,7 @@ const Leases = () => {
                         {daysRemaining.text}
                       </div>
                     </TableCell>
-                    <TableCell>${Number(lease.monthlyRent).toLocaleString()}/mo</TableCell>
+                    <TableCell>{formatCurrency(Number(lease.monthlyRent))}/mo</TableCell>
                     <TableCell>
                       <Badge className={getStatusBadge(lease.status)}>
                         {lease.status}

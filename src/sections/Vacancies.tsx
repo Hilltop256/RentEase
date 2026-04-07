@@ -26,6 +26,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { db } from '@/lib/db';
+import { formatCurrency } from '@/lib/currency';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 
@@ -515,7 +516,7 @@ const Vacancies = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {vacancy.rentAmount ? `$${Number(vacancy.rentAmount).toLocaleString()}` : '-'}
+                      {vacancy.rentAmount ? formatCurrency(Number(vacancy.rentAmount)) : '-'}
                     </TableCell>
                     <TableCell>
                       {vacancy.availableDate ? format(new Date(vacancy.availableDate), 'MMM d, yyyy') : '-'}
