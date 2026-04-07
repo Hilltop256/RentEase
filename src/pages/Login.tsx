@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, Building2, Home } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, Mail, Lock, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Login = () => {
+  const navigate = useNavigate();
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,25 +26,7 @@ const Login = () => {
 
     try {
       await login(formData);
-      // Navigate based on role will be handled by the router
-      window.location.href = '/';
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async (role: 'landlord' | 'tenant') => {
-    setError('');
-    setIsLoading(true);
-
-    try {
-      await login({
-        email: `${role}@demo.com`,
-        password: 'demo'
-      });
-      window.location.href = '/';
+      navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -133,40 +116,6 @@ const Login = () => {
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
             </form>
-
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Quick Demo Login</span>
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleDemoLogin('landlord')}
-                  disabled={isLoading}
-                  className="flex items-center gap-2"
-                >
-                  <Building2 className="h-4 w-4" />
-                  Landlord
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleDemoLogin('tenant')}
-                  disabled={isLoading}
-                  className="flex items-center gap-2"
-                >
-                  <Home className="h-4 w-4" />
-                  Tenant
-                </Button>
-              </div>
-            </div>
 
             <p className="mt-6 text-center text-sm text-gray-600">
               Don't have an account?{' '}
