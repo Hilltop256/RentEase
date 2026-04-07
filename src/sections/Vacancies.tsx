@@ -114,11 +114,11 @@ const Vacancies = () => {
 
     try {
       const data = {
-        unitNumber: vacancyForm.unitNumber || null,
-        status: vacancyForm.status,
-        availableDate: vacancyForm.availableDate || null,
-        rentAmount: vacancyForm.rentAmount ? Number(vacancyForm.rentAmount) : null,
-        description: vacancyForm.description || null
+        unitNumber: vacancyForm.unitNumber || undefined,
+        status: vacancyForm.status as 'available' | 'pending' | 'occupied',
+        availableDate: vacancyForm.availableDate || undefined,
+        rentAmount: vacancyForm.rentAmount ? Number(vacancyForm.rentAmount) : undefined,
+        description: vacancyForm.description || undefined
       };
 
       if (editingVacancy) {
@@ -149,12 +149,12 @@ const Vacancies = () => {
     try {
       const data = {
         firstName: leadForm.firstName,
-        lastName: leadForm.lastName || null,
-        email: leadForm.email || null,
-        phone: leadForm.phone || null,
-        status: leadForm.status,
-        source: leadForm.source || null,
-        notes: leadForm.notes || null
+        lastName: leadForm.lastName || undefined,
+        email: leadForm.email || undefined,
+        phone: leadForm.phone || undefined,
+        status: leadForm.status as 'new' | 'contacted' | 'showing' | 'application' | 'approved' | 'rejected' | 'converted',
+        source: leadForm.source || undefined,
+        notes: leadForm.notes || undefined
       };
 
       if (editingLead) {

@@ -120,7 +120,7 @@ export interface Vendor {
   phone: string;
   specialty: 'plumbing' | 'electrical' | 'hvac' | 'appliance' | 'general' | 'cleaning' | 'landscaping' | 'roofing' | 'painting' | 'other';
   hourlyRate?: number;
-  rating: number;
+  rating?: number;
   notes?: string;
   isActive: boolean;
 }

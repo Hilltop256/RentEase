@@ -91,13 +91,13 @@ const Notifications = () => {
 
     try {
       const data = {
-        type: formData.type,
+        type: formData.type as 'rent_reminder' | 'lease_expiry' | 'maintenance_due' | 'payment_received' | 'late_fee' | 'custom',
         title: formData.title,
         message: formData.message,
-        scheduledFor: formData.scheduledFor || null,
+        scheduledFor: formData.scheduledFor || undefined,
         status: formData.scheduledFor ? 'pending' : 'sent',
         isRecurring: formData.isRecurring,
-        recurringFrequency: formData.isRecurring ? formData.recurringFrequency : null
+        recurringFrequency: formData.isRecurring ? formData.recurringFrequency : undefined
       };
 
       if (editingNotification) {

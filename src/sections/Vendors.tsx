@@ -99,13 +99,14 @@ const Vendors = () => {
     try {
       const vendorData = {
         companyName: formData.companyName,
-        contactName: formData.contactName || null,
-        email: formData.email || null,
+        contactName: formData.contactName || undefined,
+        email: formData.email || undefined,
         phone: formData.phone,
-        specialty: formData.specialty,
-        hourlyRate: formData.hourlyRate ? Number(formData.hourlyRate) : null,
-        notes: formData.notes || null,
-        isActive: formData.isActive
+        specialty: formData.specialty as 'plumbing' | 'electrical' | 'hvac' | 'appliance' | 'general' | 'cleaning' | 'landscaping' | 'roofing' | 'painting' | 'other',
+        hourlyRate: formData.hourlyRate ? Number(formData.hourlyRate) : undefined,
+        notes: formData.notes || undefined,
+        isActive: formData.isActive,
+        rating: editingVendor?.rating ?? 0
       };
 
       if (editingVendor) {
