@@ -10,7 +10,8 @@ import {
   UserCircle,
   Loader2,
   Trash2,
-  Edit
+  Edit,
+  User
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,11 +22,23 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { db } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tenant } from '@/types';
 import { format } from 'date-fns';
+
+const ID_TYPES = [
+  { value: 'national_id', label: 'National ID' },
+  { value: 'passport', label: 'Passport' },
+  { value: 'drivers_license', label: "Driver's License" },
+  { value: 'other', label: 'Other' }
+];
+
+const TENANCY_STATUSES = [
+  { value: 'pending', label: 'Pending (New Tenant)' },
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive/Former' }
+];
 
 const Tenants = () => {
   const { user } = useAuth();
@@ -38,18 +51,42 @@ const Tenants = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    idNumber: string;
+    idType: 'national_id' | 'passport' | 'drivers_license' | 'other';
+    propertyId: string;
+    unitNumber: string;
+    leaseStart: string;
+    leaseEnd: string;
+    monthlyRent: string;
+    securityDeposit: string;
+    rentInAdvance: string;
+    status: 'active' | 'inactive' | 'pending';
+    emergencyContactName: string;
+    emergencyContactPhone: string;
+    emergencyContactRelationship: string;
+  }>({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
+    idNumber: '',
+    idType: 'national_id',
     propertyId: '',
     unitNumber: '',
     leaseStart: '',
     leaseEnd: '',
     monthlyRent: '',
     securityDeposit: '',
-    status: 'pending'
+    rentInAdvance: '1',
+    status: 'pending',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    emergencyContactRelationship: ''
   });
 
   useEffect(() => {
@@ -74,10 +111,11 @@ const Tenants = () => {
   };
 
   const filteredTenants = tenants.filter(tenant => {
-    const matchesSearch = tenant.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         tenant.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         tenant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         tenant.propertyName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = 
+      tenant.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tenant.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tenant.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tenant.idNumber?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || tenant.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
@@ -107,16 +145,24 @@ const Tenants = () => {
     try {
       const tenantData = {
         firstName: formData.firstName,
-        lastName: formData.lastName,
+        lastName: formData.lastName || undefined,
         email: formData.email,
         phone: formData.phone || undefined,
+        idNumber: formData.idNumber || undefined,
+        idType: formData.idType as any,
         propertyId: formData.propertyId || undefined,
         unitNumber: formData.unitNumber || undefined,
         leaseStart: formData.leaseStart || undefined,
         leaseEnd: formData.leaseEnd || undefined,
         monthlyRent: formData.monthlyRent ? Number(formData.monthlyRent) : 0,
         securityDeposit: formData.securityDeposit ? Number(formData.securityDeposit) : 0,
-        status: formData.status as 'active' | 'inactive' | 'pending'
+        rentInAdvance: formData.rentInAdvance ? Number(formData.rentInAdvance) : 1,
+        status: formData.status,
+        emergencyContact: {
+          name: formData.emergencyContactName || '',
+          phone: formData.emergencyContactPhone || '',
+          relationship: formData.emergencyContactRelationship || ''
+        }
       };
 
       if (editingTenant) {
@@ -130,13 +176,19 @@ const Tenants = () => {
         lastName: '',
         email: '',
         phone: '',
+        idNumber: '',
+        idType: 'national_id',
         propertyId: '',
         unitNumber: '',
         leaseStart: '',
         leaseEnd: '',
         monthlyRent: '',
         securityDeposit: '',
-        status: 'pending'
+        rentInAdvance: '1',
+        status: 'pending',
+        emergencyContactName: '',
+        emergencyContactPhone: '',
+        emergencyContactRelationship: ''
       });
       setEditingTenant(null);
       setIsDialogOpen(false);
@@ -149,19 +201,39 @@ const Tenants = () => {
   const handleEditTenant = (tenant: Tenant) => {
     setEditingTenant(tenant);
     setFormData({
-      firstName: tenant.firstName,
-      lastName: tenant.lastName,
-      email: tenant.email,
+      firstName: tenant.firstName || '',
+      lastName: tenant.lastName || '',
+      email: tenant.email || '',
       phone: tenant.phone || '',
+      idNumber: tenant.idNumber || '',
+      idType: (tenant.idType || 'national_id') as 'national_id' | 'passport' | 'drivers_license' | 'other',
       propertyId: tenant.propertyId || '',
       unitNumber: tenant.unitNumber || '',
       leaseStart: tenant.leaseStart || '',
       leaseEnd: tenant.leaseEnd || '',
       monthlyRent: String(tenant.monthlyRent),
       securityDeposit: String(tenant.securityDeposit),
-      status: tenant.status
+      rentInAdvance: String(tenant.rentInAdvance || 1),
+      status: (tenant.status || 'pending') as 'active' | 'inactive' | 'pending',
+      emergencyContactName: tenant.emergencyContact?.name || '',
+      emergencyContactPhone: tenant.emergencyContact?.phone || '',
+      emergencyContactRelationship: tenant.emergencyContact?.relationship || ''
     });
     setIsDialogOpen(true);
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-UG', {
+      style: 'currency',
+      currency: 'UGX',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const getMonthsAdvance = (months: number) => {
+    if (months <= 1) return '1 month';
+    if (months <= 3) return `${months} months`;
+    return `${months} months (Allowed)`;
   };
 
   if (isLoading) {
@@ -178,7 +250,7 @@ const Tenants = () => {
       <div className="flex flex-col sm:flex-row gap-4 justify-between">
         <div>
           <h2 className="text-2xl font-bold">Tenants</h2>
-          <p className="text-gray-500">Manage your tenants</p>
+          <p className="text-gray-500">Manage your tenants in accordance with Uganda Landlord and Tenant Act 2022</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
@@ -189,13 +261,19 @@ const Tenants = () => {
               lastName: '',
               email: '',
               phone: '',
+              idNumber: '',
+              idType: 'national_id',
               propertyId: '',
               unitNumber: '',
               leaseStart: '',
               leaseEnd: '',
               monthlyRent: '',
               securityDeposit: '',
-              status: 'pending'
+              rentInAdvance: '1',
+              status: 'pending',
+              emergencyContactName: '',
+              emergencyContactPhone: '',
+              emergencyContactRelationship: ''
             });
           }
         }}>
@@ -222,37 +300,65 @@ const Tenants = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Label htmlFor="lastName">Last Name</Label>
                   <Input
                     id="lastName"
                     placeholder="Doe"
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="john@example.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number *</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="+256 700 000000"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     required
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="john@example.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                />
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label>ID Type</Label>
+                  <Select value={formData.idType} onValueChange={(v) => setFormData({ ...formData, idType: v as any })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ID_TYPES.map(type => (
+                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="idNumber">ID Number</Label>
+                  <Input
+                    id="idNumber"
+                    placeholder="CM12345678"
+                    value={formData.idNumber}
+                    onChange={(e) => setFormData({ ...formData, idNumber: e.target.value })}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="(555) 000-0000"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-2">
                   <Label>Property</Label>
@@ -268,18 +374,19 @@ const Tenants = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="unitNumber">Unit #</Label>
+                  <Label htmlFor="unitNumber">Unit/Room No.</Label>
                   <Input
                     id="unitNumber"
-                    placeholder="101"
+                    placeholder="e.g., Room 1, Unit 101"
                     value={formData.unitNumber}
                     onChange={(e) => setFormData({ ...formData, unitNumber: e.target.value })}
                   />
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-2">
-                  <Label htmlFor="leaseStart">Lease Start</Label>
+                  <Label htmlFor="leaseStart">Lease Start Date</Label>
                   <Input
                     id="leaseStart"
                     type="date"
@@ -288,7 +395,7 @@ const Tenants = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="leaseEnd">Lease End</Label>
+                  <Label htmlFor="leaseEnd">Lease End Date</Label>
                   <Input
                     id="leaseEnd"
                     type="date"
@@ -297,13 +404,14 @@ const Tenants = () => {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+
+              <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-2">
-                  <Label htmlFor="monthlyRent">Monthly Rent ($)</Label>
+                  <Label htmlFor="monthlyRent">Monthly Rent (UGX)</Label>
                   <Input
                     id="monthlyRent"
                     type="number"
-                    placeholder="1500"
+                    placeholder="500000"
                     value={formData.monthlyRent}
                     onChange={(e) => setFormData({ ...formData, monthlyRent: e.target.value })}
                   />
@@ -313,25 +421,67 @@ const Tenants = () => {
                   <Input
                     id="securityDeposit"
                     type="number"
-                    placeholder="1500"
+                    placeholder="500000"
                     value={formData.securityDeposit}
                     onChange={(e) => setFormData({ ...formData, securityDeposit: e.target.value })}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Rent in Advance</Label>
+                  <Select value={formData.rentInAdvance} onValueChange={(v) => setFormData({ ...formData, rentInAdvance: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 month</SelectItem>
+                      <SelectItem value="2">2 months</SelectItem>
+                      <SelectItem value="3">3 months (Max)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
+                <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v as any })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
+                    {TENANCY_STATUSES.map(status => (
+                      <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="border-t pt-4">
+                <Label className="text-sm font-medium">Emergency Contact</Label>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Contact Name"
+                      value={formData.emergencyContactName}
+                      onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Phone"
+                      value={formData.emergencyContactPhone}
+                      onChange={(e) => setFormData({ ...formData, emergencyContactPhone: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Relationship"
+                      value={formData.emergencyContactRelationship}
+                      onChange={(e) => setFormData({ ...formData, emergencyContactRelationship: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
               <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700">
                 {editingTenant ? 'Update' : 'Add'} Tenant
               </Button>
@@ -345,7 +495,7 @@ const Tenants = () => {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search tenants..."
+            placeholder="Search by name, email, or ID number..."
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -396,7 +546,7 @@ const Tenants = () => {
                   <div className="flex items-center gap-3">
                     <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
                       <span className="text-lg font-semibold text-emerald-600">
-                        {tenant.firstName[0]}{tenant.lastName[0]}
+                        {tenant.firstName?.[0]}{tenant.lastName?.[0]}
                       </span>
                     </div>
                     <div>
@@ -430,10 +580,12 @@ const Tenants = () => {
                 </div>
 
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Mail className="h-4 w-4" />
-                    <span>{tenant.email}</span>
-                  </div>
+                  {tenant.email && (
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Mail className="h-4 w-4" />
+                      <span>{tenant.email}</span>
+                    </div>
+                  )}
                   {tenant.phone && (
                     <div className="flex items-center gap-2 text-gray-600">
                       <Phone className="h-4 w-4" />
@@ -442,7 +594,7 @@ const Tenants = () => {
                   )}
                   <div className="flex items-center gap-2 text-gray-600">
                     <Home className="h-4 w-4" />
-                    <span>{tenant.propertyName || 'No property'}</span>
+                    <span>{tenant.propertyName || tenant.unitNumber || 'No property'}</span>
                   </div>
                   {tenant.leaseStart && tenant.leaseEnd && (
                     <div className="flex items-center gap-2 text-gray-600">
@@ -454,7 +606,7 @@ const Tenants = () => {
 
                 <div className="mt-4 pt-3 border-t flex justify-between items-center">
                   <span className="text-lg font-bold text-emerald-600">
-                    ${tenant.monthlyRent.toLocaleString()}/mo
+                    {formatCurrency(tenant.monthlyRent)}/mo
                   </span>
                 </div>
               </CardContent>
@@ -467,8 +619,8 @@ const Tenants = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Property</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Property/Unit</TableHead>
                 <TableHead>Lease Period</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Rent</TableHead>
@@ -481,8 +633,13 @@ const Tenants = () => {
                   <TableCell className="font-medium">
                     {tenant.firstName} {tenant.lastName}
                   </TableCell>
-                  <TableCell>{tenant.email}</TableCell>
-                  <TableCell>{tenant.propertyName || '-'}</TableCell>
+                  <TableCell>
+                    <div className="text-sm">
+                      {tenant.email && <div>{tenant.email}</div>}
+                      {tenant.phone && <div className="text-gray-500">{tenant.phone}</div>}
+                    </div>
+                  </TableCell>
+                  <TableCell>{tenant.propertyName || tenant.unitNumber || '-'}</TableCell>
                   <TableCell>
                     {tenant.leaseStart && tenant.leaseEnd 
                       ? `${format(new Date(tenant.leaseStart), 'MMM d')} - ${format(new Date(tenant.leaseEnd), 'MMM d, yyyy')}`
@@ -494,7 +651,7 @@ const Tenants = () => {
                       {tenant.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>${tenant.monthlyRent.toLocaleString()}</TableCell>
+                  <TableCell>{formatCurrency(tenant.monthlyRent)}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
-  Filter, 
   MoreHorizontal, 
   Bed, 
   Bath, 
@@ -14,7 +13,9 @@ import {
   Warehouse,
   Loader2,
   Trash2,
-  Edit
+  Edit,
+  Building2,
+  Store
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,16 @@ import { db } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Property } from '@/types';
 
+const PROPERTY_TYPES = [
+  { value: 'apartment', label: 'Apartment', icon: Building },
+  { value: 'house', label: 'House', icon: Home },
+  { value: 'condo', label: 'Condominium', icon: Hotel },
+  { value: 'townhouse', label: 'Townhouse', icon: Warehouse },
+  { value: 'room', label: 'Room', icon: Building2 },
+  { value: 'shop', label: 'Shop/Commercial', icon: Store },
+  { value: 'plot', label: 'Plot/Land', icon: MapPin }
+];
+
 const Properties = () => {
   const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
@@ -36,16 +47,33 @@ const Properties = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    plotNumber: string;
+    blockNumber: string;
+    landMark: string;
+    city: string;
+    district: string;
+    type: 'apartment' | 'house' | 'condo' | 'townhouse' | 'room' | 'shop' | 'plot';
+    bedrooms: string;
+    bathrooms: string;
+    squareFeet: string;
+    monthlyRent: string;
+    status: 'vacant' | 'occupied' | 'maintenance';
+    imageUrl: string;
+    description: string;
+    isFurnished: boolean;
+    isFitForHabitation: boolean;
+  }>({
     name: '',
-    address: '',
+    plotNumber: '',
+    blockNumber: '',
+    landMark: '',
     city: '',
-    state: '',
-    zipCode: '',
+    district: '',
     type: 'apartment',
     bedrooms: '1',
     bathrooms: '1',
@@ -53,7 +81,9 @@ const Properties = () => {
     monthlyRent: '',
     status: 'vacant',
     imageUrl: '',
-    description: ''
+    description: '',
+    isFurnished: false,
+    isFitForHabitation: true
   });
 
   useEffect(() => {
@@ -74,9 +104,11 @@ const Properties = () => {
   };
 
   const filteredProperties = properties.filter(property => {
-    const matchesSearch = property.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         property.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         property.city.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = 
+      property.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.plotNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.landMark?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.city?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || property.type === filterType;
     const matchesStatus = filterStatus === 'all' || property.status === filterStatus;
     return matchesSearch && matchesType && matchesStatus;
@@ -92,13 +124,9 @@ const Properties = () => {
   };
 
   const getTypeIcon = (type: string) => {
-    const icons: Record<string, React.ReactNode> = {
-      apartment: <Building className="h-5 w-5" />,
-      house: <Home className="h-5 w-5" />,
-      condo: <Hotel className="h-5 w-5" />,
-      townhouse: <Warehouse className="h-5 w-5" />
-    };
-    return icons[type] || <Home className="h-5 w-5" />;
+    const found = PROPERTY_TYPES.find(t => t.value === type);
+    const Icon = found?.icon || Home;
+    return <Icon className="h-5 w-5" />;
   };
 
   const handleDeleteProperty = async (id: string) => {
@@ -117,18 +145,22 @@ const Properties = () => {
     try {
       const propertyData = {
         name: formData.name,
-        address: formData.address,
+        plotNumber: formData.plotNumber || undefined,
+        blockNumber: formData.blockNumber || undefined,
+        landMark: formData.landMark || undefined,
         city: formData.city,
-        state: formData.state,
-        zipCode: formData.zipCode,
-        type: formData.type as 'apartment' | 'house' | 'condo' | 'townhouse',
+        district: formData.district || undefined,
+        type: formData.type,
         bedrooms: Number(formData.bedrooms),
         bathrooms: Number(formData.bathrooms),
         squareFeet: formData.squareFeet ? Number(formData.squareFeet) : 0,
         monthlyRent: formData.monthlyRent ? Number(formData.monthlyRent) : 0,
-        status: formData.status as 'vacant' | 'occupied' | 'maintenance',
+        status: formData.status,
         imageUrl: formData.imageUrl || undefined,
-        description: formData.description || undefined
+        description: formData.description || undefined,
+        amenities: [],
+        isFurnished: formData.isFurnished,
+        isFitForHabitation: formData.isFitForHabitation
       };
 
       if (editingProperty) {
@@ -139,10 +171,11 @@ const Properties = () => {
 
       setFormData({
         name: '',
-        address: '',
+        plotNumber: '',
+        blockNumber: '',
+        landMark: '',
         city: '',
-        state: '',
-        zipCode: '',
+        district: '',
         type: 'apartment',
         bedrooms: '1',
         bathrooms: '1',
@@ -150,7 +183,9 @@ const Properties = () => {
         monthlyRent: '',
         status: 'vacant',
         imageUrl: '',
-        description: ''
+        description: '',
+        isFurnished: false,
+        isFitForHabitation: true
       });
       setEditingProperty(null);
       setIsDialogOpen(false);
@@ -163,21 +198,32 @@ const Properties = () => {
   const handleEditProperty = (property: Property) => {
     setEditingProperty(property);
     setFormData({
-      name: property.name,
-      address: property.address,
-      city: property.city,
-      state: property.state,
-      zipCode: property.zipCode,
-      type: property.type,
-      bedrooms: String(property.bedrooms),
-      bathrooms: String(property.bathrooms),
-      squareFeet: String(property.squareFeet),
-      monthlyRent: String(property.monthlyRent),
-      status: property.status,
+      name: property.name || '',
+      plotNumber: property.plotNumber || '',
+      blockNumber: property.blockNumber || '',
+      landMark: property.landMark || '',
+      city: property.city || '',
+      district: property.district || '',
+      type: (property.type || 'apartment') as 'apartment' | 'house' | 'condo' | 'townhouse' | 'room' | 'shop' | 'plot',
+      bedrooms: String(property.bedrooms || 1),
+      bathrooms: String(property.bathrooms || 1),
+      squareFeet: String(property.squareFeet || ''),
+      monthlyRent: String(property.monthlyRent || ''),
+      status: (property.status || 'vacant') as 'vacant' | 'occupied' | 'maintenance',
       imageUrl: property.imageUrl || '',
-      description: property.description || ''
+      description: property.description || '',
+      isFurnished: property.isFurnished || false,
+      isFitForHabitation: property.isFitForHabitation !== false
     });
     setIsDialogOpen(true);
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-UG', {
+      style: 'currency',
+      currency: 'UGX',
+      maximumFractionDigits: 0
+    }).format(amount);
   };
 
   if (isLoading) {
@@ -194,7 +240,7 @@ const Properties = () => {
       <div className="flex flex-col sm:flex-row gap-4 justify-between">
         <div>
           <h2 className="text-2xl font-bold">Properties</h2>
-          <p className="text-gray-500">Manage your rental properties</p>
+          <p className="text-gray-500">Manage your rental properties in Uganda</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
@@ -202,10 +248,11 @@ const Properties = () => {
             setEditingProperty(null);
             setFormData({
               name: '',
-              address: '',
+              plotNumber: '',
+              blockNumber: '',
+              landMark: '',
               city: '',
-              state: '',
-              zipCode: '',
+              district: '',
               type: 'apartment',
               bedrooms: '1',
               bathrooms: '1',
@@ -213,7 +260,9 @@ const Properties = () => {
               monthlyRent: '',
               status: 'vacant',
               imageUrl: '',
-              description: ''
+              description: '',
+              isFurnished: false,
+              isFitForHabitation: true
             });
           }
         }}>
@@ -232,86 +281,98 @@ const Properties = () => {
                 <Label htmlFor="name">Property Name *</Label>
                 <Input
                   id="name"
-                  placeholder="e.g., Sunset Apartments Unit 101"
+                  placeholder="e.g., Kampala Apartments Unit 1"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="plotNumber">Plot Number</Label>
+                  <Input
+                    id="plotNumber"
+                    placeholder="e.g., Plot 123"
+                    value={formData.plotNumber}
+                    onChange={(e) => setFormData({ ...formData, plotNumber: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="blockNumber">Block Number</Label>
+                  <Input
+                    id="blockNumber"
+                    placeholder="e.g., Block A"
+                    value={formData.blockNumber}
+                    onChange={(e) => setFormData({ ...formData, blockNumber: e.target.value })}
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="address">Address *</Label>
+                <Label htmlFor="landMark">Landmark / Street</Label>
                 <Input
-                  id="address"
-                  placeholder="123 Main Street"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  required
+                  id="landMark"
+                  placeholder="e.g., Near Kampala Road, opposite factory"
+                  value={formData.landMark}
+                  onChange={(e) => setFormData({ ...formData, landMark: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-3 gap-2">
+
+              <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-2">
-                  <Label htmlFor="city">City *</Label>
+                  <Label htmlFor="city">Area/Town *</Label>
                   <Input
                     id="city"
-                    placeholder="New York"
+                    placeholder="e.g., Kampala"
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="state">State *</Label>
+                  <Label htmlFor="district">District</Label>
                   <Input
-                    id="state"
-                    placeholder="NY"
-                    value={formData.state}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="zipCode">ZIP *</Label>
-                  <Input
-                    id="zipCode"
-                    placeholder="10001"
-                    value={formData.zipCode}
-                    onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
-                    required
+                    id="district"
+                    placeholder="e.g., Wakiso"
+                    value={formData.district}
+                    onChange={(e) => setFormData({ ...formData, district: e.target.value })}
                   />
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-2">
-                  <Label>Type</Label>
-                  <Select value={formData.type} onValueChange={(v) => setFormData({ ...formData, type: v })}>
+                  <Label>Property Type</Label>
+                  <Select value={formData.type} onValueChange={(v) => setFormData({ ...formData, type: v as any })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="apartment">Apartment</SelectItem>
-                      <SelectItem value="house">House</SelectItem>
-                      <SelectItem value="condo">Condo</SelectItem>
-                      <SelectItem value="townhouse">Townhouse</SelectItem>
+                      {PROPERTY_TYPES.map(type => (
+                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Status</Label>
-                  <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
+                  <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v as any })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="vacant">Vacant</SelectItem>
                       <SelectItem value="occupied">Occupied</SelectItem>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
+                      <SelectItem value="maintenance">Under Maintenance</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
               <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-2">
-                  <Label htmlFor="bedrooms">Bedrooms</Label>
+                  <Label>Bedrooms</Label>
                   <Select value={formData.bedrooms} onValueChange={(v) => setFormData({ ...formData, bedrooms: v })}>
                     <SelectTrigger>
                       <SelectValue />
@@ -327,7 +388,7 @@ const Properties = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="bathrooms">Bathrooms</Label>
+                  <Label>Bathrooms</Label>
                   <Select value={formData.bathrooms} onValueChange={(v) => setFormData({ ...formData, bathrooms: v })}>
                     <SelectTrigger>
                       <SelectValue />
@@ -352,17 +413,20 @@ const Properties = () => {
                   />
                 </div>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="monthlyRent">Monthly Rent ($) *</Label>
+                <Label htmlFor="monthlyRent">Monthly Rent (UGX) *</Label>
                 <Input
                   id="monthlyRent"
                   type="number"
-                  placeholder="1500"
+                  placeholder="500000"
                   value={formData.monthlyRent}
                   onChange={(e) => setFormData({ ...formData, monthlyRent: e.target.value })}
                   required
                 />
+                <p className="text-xs text-gray-400">Enter amount in Ugandan Shillings</p>
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="imageUrl">Image URL</Label>
                 <Input
@@ -372,6 +436,7 @@ const Properties = () => {
                   onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
@@ -381,6 +446,30 @@ const Properties = () => {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
               </div>
+
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isFurnished"
+                    checked={formData.isFurnished}
+                    onChange={(e) => setFormData({ ...formData, isFurnished: e.target.checked })}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="isFurnished" className="text-sm">Furnished</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isFitForHabitation"
+                    checked={formData.isFitForHabitation}
+                    onChange={(e) => setFormData({ ...formData, isFitForHabitation: e.target.checked })}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="isFitForHabitation" className="text-sm">Fit for Habitation</Label>
+                </div>
+              </div>
+
               <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700">
                 {editingProperty ? 'Update' : 'Add'} Property
               </Button>
@@ -394,7 +483,7 @@ const Properties = () => {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search properties..."
+            placeholder="Search by name, plot number, or landmark..."
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -406,10 +495,9 @@ const Properties = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="apartment">Apartment</SelectItem>
-            <SelectItem value="house">House</SelectItem>
-            <SelectItem value="condo">Condo</SelectItem>
-            <SelectItem value="townhouse">Townhouse</SelectItem>
+            {PROPERTY_TYPES.map(type => (
+              <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -479,8 +567,16 @@ const Properties = () => {
                 
                 <div className="flex items-center gap-1 text-sm text-gray-500 mb-3">
                   <MapPin className="h-4 w-4" />
-                  <span>{property.address}, {property.city}</span>
+                  <span>
+                    {property.plotNumber && `Plot ${property.plotNumber}`}
+                    {property.blockNumber && `, Block ${property.blockNumber}`}
+                  </span>
                 </div>
+                {property.landMark && (
+                  <div className="text-xs text-gray-400 mb-2">
+                    {property.landMark}
+                  </div>
+                )}
 
                 <div className="flex gap-4 text-sm text-gray-600 mb-3">
                   <div className="flex items-center gap-1">
@@ -499,9 +595,9 @@ const Properties = () => {
 
                 <div className="flex justify-between items-center pt-3 border-t">
                   <span className="text-lg font-bold text-emerald-600">
-                    ${property.monthlyRent.toLocaleString()}/mo
+                    {formatCurrency(property.monthlyRent)}/mo
                   </span>
-                  <span className="text-sm text-gray-500">{property.type}</span>
+                  <span className="text-sm text-gray-500 capitalize">{property.type}</span>
                 </div>
               </CardContent>
             </Card>

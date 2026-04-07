@@ -309,9 +309,9 @@ const Payments = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                      <SelectItem value="credit_card">Credit Card</SelectItem>
-                      <SelectItem value="check">Check</SelectItem>
+                      <SelectItem value="mobile_money">Mobile Money (MTN/Airtel)</SelectItem>
                       <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="cheque">Cheque</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

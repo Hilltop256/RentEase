@@ -1,11 +1,15 @@
 export interface Property {
   id: string;
   name: string;
-  address: string;
+  address?: string;
+  plotNumber?: string;
+  blockNumber?: string;
+  landMark?: string;
   city: string;
-  state: string;
-  zipCode: string;
-  type: 'apartment' | 'house' | 'condo' | 'townhouse';
+  state?: string;
+  district?: string;
+  zipCode?: string;
+  type: 'apartment' | 'house' | 'condo' | 'townhouse' | 'room' | 'shop' | 'plot';
   bedrooms: number;
   bathrooms: number;
   squareFeet: number;
@@ -14,6 +18,8 @@ export interface Property {
   imageUrl: string;
   description: string;
   amenities: string[];
+  isFurnished?: boolean;
+  isFitForHabitation?: boolean;
 }
 
 export interface Tenant {
@@ -22,6 +28,8 @@ export interface Tenant {
   lastName: string;
   email: string;
   phone: string;
+  idNumber?: string;
+  idType?: 'national_id' | 'passport' | 'drivers_license' | 'other';
   propertyId: string;
   propertyName: string;
   unitNumber?: string;
@@ -29,6 +37,7 @@ export interface Tenant {
   leaseEnd: string;
   monthlyRent: number;
   securityDeposit: number;
+  rentInAdvance?: number;
   status: 'active' | 'inactive' | 'pending';
   emergencyContact: {
     name: string;
@@ -47,7 +56,9 @@ export interface Payment {
   dueDate: string;
   paidDate?: string;
   status: 'paid' | 'pending' | 'overdue' | 'partial';
-  paymentMethod?: 'bank_transfer' | 'credit_card' | 'check' | 'cash';
+  paymentMethod?: 'bank_transfer' | 'mobile_money' | 'cash' | 'cheque' | 'credit_card' | 'check' | undefined;
+  paymentReference?: string;
+  lateFee?: number;
   description: string;
 }
 
@@ -59,7 +70,7 @@ export interface MaintenanceRequest {
   tenantName: string;
   title: string;
   description: string;
-  category: 'plumbing' | 'electrical' | 'hvac' | 'appliance' | 'structural' | 'other';
+  category: 'plumbing' | 'electrical' | 'hvac' | 'appliance' | 'structural' | 'pest' | 'other';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'open' | 'in_progress' | 'completed' | 'cancelled';
   photos?: string[];
@@ -68,6 +79,7 @@ export interface MaintenanceRequest {
   assignedTo?: string;
   estimatedCost?: number;
   actualCost?: number;
+  reportedBy?: string;
 }
 
 export interface Lease {
@@ -80,9 +92,13 @@ export interface Lease {
   endDate: string;
   monthlyRent: number;
   securityDeposit: number;
+  rentInAdvance?: number;
   petDeposit?: number;
   terms: string;
   status: 'active' | 'expired' | 'terminated' | 'pending';
+  noticePeriod?: number;
+  rentIncreaseCap?: number;
+  isWritten?: boolean;
 }
 
 export interface DashboardStats {
@@ -135,6 +151,7 @@ export interface Vacancy {
   description?: string;
   amenities?: string[];
   listingDate?: string;
+  viewingsCount?: number;
 }
 
 export interface Lead {
@@ -144,6 +161,7 @@ export interface Lead {
   lastName?: string;
   email?: string;
   phone?: string;
+  idNumber?: string;
   status: 'new' | 'contacted' | 'showing' | 'application' | 'approved' | 'rejected' | 'converted';
   notes?: string;
   source?: string;
@@ -167,7 +185,7 @@ export interface Notification {
   id: string;
   tenantId?: string;
   propertyId?: string;
-  type: 'rent_reminder' | 'lease_expiry' | 'maintenance_due' | 'payment_received' | 'late_fee' | 'custom';
+  type: 'rent_reminder' | 'lease_expiry' | 'maintenance_due' | 'payment_received' | 'late_fee' | 'inspection_notice' | 'custom';
   title: string;
   message: string;
   scheduledFor?: string;
