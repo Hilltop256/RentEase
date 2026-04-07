@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Property, Tenant, Payment, MaintenanceRequest, Lease, DashboardStats } from '@/types';
+import type { Property, Tenant, Payment, MaintenanceRequest, Lease, DashboardStats, Expense, Vendor, Vacancy, Lead, Document, Notification } from '@/types';
 
 export const db = {
   // PROPERTIES
@@ -287,13 +287,300 @@ export const db = {
     }
   },
 
+  // EXPENSES
+  expenses: {
+    async getAll(landlordId: string): Promise<Expense[]> {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('landlord_id', landlordId)
+        .order('date', { ascending: false });
+      
+      if (error) throw error;
+      return data?.map(mapDbExpenseToExpense) || [];
+    },
+
+    async getByProperty(propertyId: string): Promise<Expense[]> {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('property_id', propertyId)
+        .order('date', { ascending: false });
+      
+      if (error) throw error;
+      return data?.map(mapDbExpenseToExpense) || [];
+    },
+
+    async create(expense: Omit<Expense, 'id' | 'created_at' | 'updated_at'>, landlordId: string): Promise<Expense> {
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert({ ...expense, landlord_id: landlordId })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapDbExpenseToExpense(data);
+    },
+
+    async update(id: string, expense: Partial<Expense>): Promise<Expense> {
+      const { data, error } = await supabase
+        .from('expenses')
+        .update({ ...expense, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapDbExpenseToExpense(data);
+    },
+
+    async delete(id: string): Promise<void> {
+      const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    }
+  },
+
+  // VENDORS
+  vendors: {
+    async getAll(landlordId: string): Promise<Vendor[]> {
+      const { data, error } = await supabase
+        .from('vendors')
+        .select('*')
+        .eq('landlord_id', landlordId)
+        .order('company_name', { ascending: true });
+      
+      if (error) throw error;
+      return data?.map(mapDbVendorToVendor) || [];
+    },
+
+    async getById(id: string): Promise<Vendor | null> {
+      const { data, error } = await supabase
+        .from('vendors')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return data ? mapDbVendorToVendor(data) : null;
+    },
+
+    async create(vendor: Omit<Vendor, 'id' | 'created_at' | 'updated_at'>, landlordId: string): Promise<Vendor> {
+      const { data, error } = await supabase
+        .from('vendors')
+        .insert({ ...vendor, landlord_id: landlordId })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapDbVendorToVendor(data);
+    },
+
+    async update(id: string, vendor: Partial<Vendor>): Promise<Vendor> {
+      const { data, error } = await supabase
+        .from('vendors')
+        .update({ ...vendor, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapDbVendorToVendor(data);
+    },
+
+    async delete(id: string): Promise<void> {
+      const { error } = await supabase
+        .from('vendors')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    }
+  },
+
+  // VACANCIES
+  vacancies: {
+    async getAll(landlordId: string): Promise<Vacancy[]> {
+      const { data, error } = await supabase
+        .from('vacancies')
+        .select('*')
+        .eq('landlord_id', landlordId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data?.map(mapDbVacancyToVacancy) || [];
+    },
+
+    async create(vacancy: Omit<Vacancy, 'id' | 'created_at' | 'updated_at'>, landlordId: string): Promise<Vacancy> {
+      const { data, error } = await supabase
+        .from('vacancies')
+        .insert({ ...vacancy, landlord_id: landlordId })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapDbVacancyToVacancy(data);
+    },
+
+    async update(id: string, vacancy: Partial<Vacancy>): Promise<Vacancy> {
+      const { data, error } = await supabase
+        .from('vacancies')
+        .update({ ...vacancy, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapDbVacancyToVacancy(data);
+    },
+
+    async delete(id: string): Promise<void> {
+      const { error } = await supabase
+        .from('vacancies')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    }
+  },
+
+  // LEADS
+  leads: {
+    async getAll(landlordId: string): Promise<Lead[]> {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('landlord_id', landlordId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data?.map(mapDbLeadToLead) || [];
+    },
+
+    async create(lead: Omit<Lead, 'id' | 'created_at' | 'updated_at'>, landlordId: string): Promise<Lead> {
+      const { data, error } = await supabase
+        .from('leads')
+        .insert({ ...lead, landlord_id: landlordId })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapDbLeadToLead(data);
+    },
+
+    async update(id: string, lead: Partial<Lead>): Promise<Lead> {
+      const { data, error } = await supabase
+        .from('leads')
+        .update({ ...lead, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapDbLeadToLead(data);
+    },
+
+    async delete(id: string): Promise<void> {
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    }
+  },
+
+  // DOCUMENTS
+  documents: {
+    async getAll(landlordId: string): Promise<Document[]> {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('landlord_id', landlordId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data?.map(mapDbDocumentToDocument) || [];
+    },
+
+    async create(doc: Omit<Document, 'id' | 'created_at'>, landlordId: string): Promise<Document> {
+      const { data, error } = await supabase
+        .from('documents')
+        .insert({ ...doc, landlord_id: landlordId })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapDbDocumentToDocument(data);
+    },
+
+    async delete(id: string): Promise<void> {
+      const { error } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    }
+  },
+
+  // NOTIFICATIONS
+  notifications: {
+    async getAll(landlordId: string): Promise<Notification[]> {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('landlord_id', landlordId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data?.map(mapDbNotificationToNotification) || [];
+    },
+
+    async create(notification: Omit<Notification, 'id' | 'created_at'>, landlordId: string): Promise<Notification> {
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert({ ...notification, landlord_id: landlordId })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapDbNotificationToNotification(data);
+    },
+
+    async update(id: string, notification: Partial<Notification>): Promise<Notification> {
+      const { data, error } = await supabase
+        .from('notifications')
+        .update(notification)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapDbNotificationToNotification(data);
+    },
+
+    async delete(id: string): Promise<void> {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    }
+  },
+
   // DASHBOARD STATS
   async getDashboardStats(landlordId: string): Promise<DashboardStats> {
-    const [properties, tenants, payments, maintenance] = await Promise.all([
+    const [properties, tenants, payments, maintenance, expenses] = await Promise.all([
       db.properties.getAll(landlordId),
       db.tenants.getAll(landlordId),
       db.payments.getAll(landlordId),
-      db.maintenance.getAll(landlordId)
+      db.maintenance.getAll(landlordId),
+      db.expenses.getAll(landlordId)
     ]);
 
     const occupiedUnits = properties.filter(p => p.status === 'occupied').length;
@@ -308,6 +595,9 @@ export const db = {
     const occupancyRate = properties.length > 0 
       ? Math.round((occupiedUnits / properties.length) * 100) 
       : 0;
+    
+    const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    const netIncome = monthlyRevenue - totalExpenses;
 
     return {
       totalProperties: properties.length,
@@ -318,7 +608,9 @@ export const db = {
       pendingPayments,
       overduePayments,
       openMaintenanceRequests: openMaintenance,
-      occupancyRate
+      occupancyRate,
+      totalExpenses,
+      netIncome
     };
   }
 };
@@ -412,10 +704,101 @@ function mapDbMaintenanceToMaintenance(dbMaintenance: any): MaintenanceRequest {
     category: dbMaintenance.category,
     priority: dbMaintenance.priority,
     status: dbMaintenance.status,
+    photos: dbMaintenance.photos || [],
     createdAt: dbMaintenance.created_at,
     completedAt: dbMaintenance.completed_at,
     assignedTo: dbMaintenance.assigned_to,
     estimatedCost: dbMaintenance.estimated_cost ? Number(dbMaintenance.estimated_cost) : undefined,
     actualCost: dbMaintenance.actual_cost ? Number(dbMaintenance.actual_cost) : undefined
+  };
+}
+
+function mapDbExpenseToExpense(dbExpense: any): Expense {
+  return {
+    id: dbExpense.id,
+    propertyId: dbExpense.property_id,
+    category: dbExpense.category,
+    description: dbExpense.description,
+    amount: Number(dbExpense.amount),
+    date: dbExpense.date,
+    vendorId: dbExpense.vendor_id,
+    receiptUrl: dbExpense.receipt_url,
+    isRecurring: dbExpense.is_recurring,
+    recurringFrequency: dbExpense.recurring_frequency
+  };
+}
+
+function mapDbVendorToVendor(dbVendor: any): Vendor {
+  return {
+    id: dbVendor.id,
+    companyName: dbVendor.company_name,
+    contactName: dbVendor.contact_name,
+    email: dbVendor.email,
+    phone: dbVendor.phone,
+    specialty: dbVendor.specialty,
+    hourlyRate: dbVendor.hourly_rate ? Number(dbVendor.hourly_rate) : undefined,
+    rating: Number(dbVendor.rating) || 0,
+    notes: dbVendor.notes,
+    isActive: dbVendor.is_active
+  };
+}
+
+function mapDbVacancyToVacancy(dbVacancy: any): Vacancy {
+  return {
+    id: dbVacancy.id,
+    propertyId: dbVacancy.property_id,
+    unitNumber: dbVacancy.unit_number,
+    status: dbVacancy.status,
+    availableDate: dbVacancy.available_date,
+    rentAmount: dbVacancy.rent_amount ? Number(dbVacancy.rent_amount) : undefined,
+    description: dbVacancy.description,
+    amenities: dbVacancy.amenities || [],
+    listingDate: dbVacancy.listing_date
+  };
+}
+
+function mapDbLeadToLead(dbLead: any): Lead {
+  return {
+    id: dbLead.id,
+    vacancyId: dbLead.vacancy_id,
+    firstName: dbLead.first_name,
+    lastName: dbLead.last_name,
+    email: dbLead.email,
+    phone: dbLead.phone,
+    status: dbLead.status,
+    notes: dbLead.notes,
+    source: dbLead.source
+  };
+}
+
+function mapDbDocumentToDocument(dbDoc: any): Document {
+  return {
+    id: dbDoc.id,
+    tenantId: dbDoc.tenant_id,
+    propertyId: dbDoc.property_id,
+    name: dbDoc.name,
+    type: dbDoc.type,
+    category: dbDoc.category,
+    fileUrl: dbDoc.file_url,
+    fileSize: dbDoc.file_size,
+    mimeType: dbDoc.mime_type,
+    description: dbDoc.description,
+    isEncrypted: dbDoc.is_encrypted
+  };
+}
+
+function mapDbNotificationToNotification(dbNotification: any): Notification {
+  return {
+    id: dbNotification.id,
+    tenantId: dbNotification.tenant_id,
+    propertyId: dbNotification.property_id,
+    type: dbNotification.type,
+    title: dbNotification.title,
+    message: dbNotification.message,
+    scheduledFor: dbNotification.scheduled_for,
+    sentAt: dbNotification.sent_at,
+    status: dbNotification.status,
+    isRecurring: dbNotification.is_recurring,
+    recurringFrequency: dbNotification.recurring_frequency
   };
 }

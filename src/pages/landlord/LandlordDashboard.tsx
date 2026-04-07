@@ -13,7 +13,12 @@ import {
   UserCircle,
   LogOut,
   Settings,
-  MessageSquare
+  MessageSquare,
+  DollarSign,
+  UserCheck,
+  Home,
+  FileLock,
+  BellRing
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,8 +30,13 @@ import Tenants from '@/sections/Tenants';
 import Payments from '@/sections/Payments';
 import Maintenance from '@/sections/Maintenance';
 import Leases from '@/sections/Leases';
+import Finance from '@/sections/Finance';
+import Vendors from '@/sections/Vendors';
+import Vacancies from '@/sections/Vacancies';
+import Documents from '@/sections/Documents';
+import Notifications from '@/sections/Notifications';
 
-type LandlordView = 'dashboard' | 'properties' | 'tenants' | 'payments' | 'maintenance' | 'leases';
+type LandlordView = 'dashboard' | 'properties' | 'tenants' | 'payments' | 'maintenance' | 'leases' | 'finance' | 'vendors' | 'vacancies' | 'documents' | 'notifications';
 
 const LandlordDashboard = () => {
   const { user, logout } = useAuth();
@@ -40,6 +50,11 @@ const LandlordDashboard = () => {
     { id: 'payments' as LandlordView, label: 'Payments', icon: CreditCard },
     { id: 'maintenance' as LandlordView, label: 'Maintenance', icon: Wrench },
     { id: 'leases' as LandlordView, label: 'Leases', icon: FileText },
+    { id: 'finance' as LandlordView, label: 'Finance', icon: DollarSign },
+    { id: 'vendors' as LandlordView, label: 'Vendors', icon: UserCheck },
+    { id: 'vacancies' as LandlordView, label: 'Vacancies', icon: Home },
+    { id: 'documents' as LandlordView, label: 'Documents', icon: FileLock },
+    { id: 'notifications' as LandlordView, label: 'Notifications', icon: BellRing },
   ];
 
   const handleLogout = () => {
@@ -61,6 +76,16 @@ const LandlordDashboard = () => {
         return <Maintenance />;
       case 'leases':
         return <Leases />;
+      case 'finance':
+        return <Finance />;
+      case 'vendors':
+        return <Vendors />;
+      case 'vacancies':
+        return <Vacancies />;
+      case 'documents':
+        return <Documents />;
+      case 'notifications':
+        return <Notifications />;
       default:
         return <Dashboard />;
     }

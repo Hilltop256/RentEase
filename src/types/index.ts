@@ -62,6 +62,7 @@ export interface MaintenanceRequest {
   category: 'plumbing' | 'electrical' | 'hvac' | 'appliance' | 'structural' | 'other';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'open' | 'in_progress' | 'completed' | 'cancelled';
+  photos?: string[];
   createdAt: string;
   completedAt?: string;
   assignedTo?: string;
@@ -94,6 +95,86 @@ export interface DashboardStats {
   overduePayments: number;
   openMaintenanceRequests: number;
   occupancyRate: number;
+  totalExpenses?: number;
+  netIncome?: number;
+}
+
+export interface Expense {
+  id: string;
+  propertyId?: string;
+  category: 'maintenance' | 'repairs' | 'utilities' | 'taxes' | 'insurance' | 'mortgage' | 'management_fee' | 'legal' | 'marketing' | 'other';
+  description: string;
+  amount: number;
+  date: string;
+  vendorId?: string;
+  receiptUrl?: string;
+  isRecurring: boolean;
+  recurringFrequency?: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+}
+
+export interface Vendor {
+  id: string;
+  companyName: string;
+  contactName?: string;
+  email?: string;
+  phone: string;
+  specialty: 'plumbing' | 'electrical' | 'hvac' | 'appliance' | 'general' | 'cleaning' | 'landscaping' | 'roofing' | 'painting' | 'other';
+  hourlyRate?: number;
+  rating: number;
+  notes?: string;
+  isActive: boolean;
+}
+
+export interface Vacancy {
+  id: string;
+  propertyId?: string;
+  unitNumber?: string;
+  status: 'available' | 'pending' | 'occupied';
+  availableDate?: string;
+  rentAmount?: number;
+  description?: string;
+  amenities?: string[];
+  listingDate?: string;
+}
+
+export interface Lead {
+  id: string;
+  vacancyId?: string;
+  firstName: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  status: 'new' | 'contacted' | 'showing' | 'application' | 'approved' | 'rejected' | 'converted';
+  notes?: string;
+  source?: string;
+}
+
+export interface Document {
+  id: string;
+  tenantId?: string;
+  propertyId?: string;
+  name: string;
+  type: 'lease' | 'addendum' | 'invoice' | 'receipt' | 'id_document' | 'insurance' | 'tax' | 'other';
+  category: 'tenant' | 'property' | 'financial' | 'legal' | 'other';
+  fileUrl: string;
+  fileSize?: number;
+  mimeType?: string;
+  description?: string;
+  isEncrypted: boolean;
+}
+
+export interface Notification {
+  id: string;
+  tenantId?: string;
+  propertyId?: string;
+  type: 'rent_reminder' | 'lease_expiry' | 'maintenance_due' | 'payment_received' | 'late_fee' | 'custom';
+  title: string;
+  message: string;
+  scheduledFor?: string;
+  sentAt?: string;
+  status: 'pending' | 'sent' | 'failed' | 'cancelled';
+  isRecurring: boolean;
+  recurringFrequency?: 'daily' | 'weekly' | 'monthly';
 }
 
 export type ViewType = 'dashboard' | 'properties' | 'tenants' | 'payments' | 'maintenance' | 'leases';
